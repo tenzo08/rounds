@@ -1,26 +1,49 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --paper: #f3f1e7;
+  --paper-grid: #e7e3d3;
+  --card: #fffef9;
+  --ink: #1e2823;
+  --ink-soft: #52584f;
+  --binder: #1b222a;
+  --binder-soft: #2a333d;
+  --binder-text: #d9dcd6;
+  --line: #d8d3c2;
+
+  --c-fund: #4a7c59;
+  --c-pharm: #6b5b95;
+  --c-medsurg: #3b6e8f;
+  --c-obpeds: #c4547d;
+  --c-psych: #3a8f8c;
+  --c-crit: #b33a3a;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --color-paper: var(--paper);
+  --color-paper-grid: var(--paper-grid);
+  --color-card: var(--card);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-binder: var(--binder);
+  --color-binder-soft: var(--binder-soft);
+  --color-binder-text: var(--binder-text);
+  --color-line: var(--line);
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-c-fund: var(--c-fund);
+  --color-c-pharm: var(--c-pharm);
+  --color-c-medsurg: var(--c-medsurg);
+  --color-c-obpeds: var(--c-obpeds);
+  --color-c-psych: var(--c-psych);
+  --color-c-crit: var(--c-crit);
+
+  --font-serif: var(--font-plex-serif), serif;
+  --font-sans: var(--font-plex-sans), sans-serif;
+  --font-mono: var(--font-plex-mono), monospace;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
 }

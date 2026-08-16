@@ -1,7 +1,4 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
+// Prisma schema for The Rounds — see docs/DATA-MODEL.md for the entity/relationship spec.
 
 generator client {
   provider = "prisma-client"
@@ -10,4 +7,89 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+enum Category {
+  fundamentals
+  pharm
+  medsurg
+  obpeds
+  psych
+  crit
+}
+
+enum GroupRole {
+  admin
+  member
+}
+
+model User {
+  id          String   @id @default(cuid())
+  googleSub   String   @unique @map("google_sub")
+  email       String   @unique
+  displayName String   @map("display_name")
+  avatarUrl   String?  @map("avatar_url")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  notes            Note[]
+  createdGroups    Group[]           @relation("GroupCreator")
+  groupMemberships GroupMembership[]
+
+  @@map("users")
+}
+
+model Note {
+  id        String    @id @default(cuid())
+  ownerId   String    @map("owner_id")
+  owner     User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  title     String
+  category  Category
+  body      String
+  tags      String[]
+  link      String?
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  shares NoteShare[]
+
+  @@index([ownerId])
+  @@map("notes")
+}
+
+model Group {
+  id        String   @id @default(cuid())
+  name      String
+  createdBy String   @map("created_by")
+  creator   User     @relation("GroupCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  memberships GroupMembership[]
+  noteShares  NoteShare[]
+
+  @@map("groups")
+}
+
+model GroupMembership {
+  id       String    @id @default(cuid())
+  groupId  String    @map("group_id")
+  group    Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  userId   String    @map("user_id")
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role     GroupRole @default(member)
+  joinedAt DateTime  @default(now()) @map("joined_at")
+
+  @@unique([groupId, userId])
+  @@map("group_memberships")
+}
+
+model NoteShare {
+  id       String   @id @default(cuid())
+  noteId   String   @map("note_id")
+  note     Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  groupId  String   @map("group_id")
+  group    Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  sharedAt DateTime @default(now()) @map("shared_at")
+
+  @@unique([noteId, groupId])
+  @@map("note_shares")
 }
