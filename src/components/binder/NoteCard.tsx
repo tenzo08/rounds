@@ -16,10 +16,11 @@ interface NoteCardAuthor {
 interface NoteCardProps {
   note: NoteCardData;
   author?: NoteCardAuthor;
+  groupChips?: string[];
   onClick: () => void;
 }
 
-export function NoteCard({ note, author, onClick }: NoteCardProps) {
+export function NoteCard({ note, author, groupChips, onClick }: NoteCardProps) {
   const color = topicColor(note.topic);
 
   return (
@@ -51,6 +52,18 @@ export function NoteCard({ note, author, onClick }: NoteCardProps) {
               className="rounded-[3px] bg-paper-grid px-[7px] py-[3px] font-mono text-[10px] text-ink-soft"
             >
               {tag}
+            </span>
+          ))}
+        </div>
+      )}
+      {groupChips && groupChips.length > 0 && (
+        <div className="mb-3 flex flex-wrap gap-[5px]">
+          {groupChips.map((name) => (
+            <span
+              key={name}
+              className="rounded-[3px] bg-binder px-[7px] py-[3px] font-mono text-[10px] text-binder-text"
+            >
+              → {name}
             </span>
           ))}
         </div>

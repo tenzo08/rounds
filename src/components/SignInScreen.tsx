@@ -1,4 +1,5 @@
 import { signIn } from "@/lib/auth";
+import { Logo } from "@/components/Logo";
 
 function GoogleIcon() {
   return (
@@ -27,6 +28,7 @@ export function SignInScreen() {
   return (
     <div className="flex min-h-screen flex-1 flex-col items-center justify-center bg-binder px-6">
       <div className="flex flex-col items-center gap-3 text-center">
+        <Logo size={44} />
         <span className="font-mono text-xs tracking-[0.2em] text-binder-text/60 uppercase">
           Clinical Study Binder
         </span>

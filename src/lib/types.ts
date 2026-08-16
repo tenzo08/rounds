@@ -9,6 +9,7 @@ export interface NoteDTO {
   link: string | null;
   createdAt: string;
   updatedAt: string;
+  sharedGroups: string[];
 }
 
 export interface TopicSummaryDTO {
@@ -62,4 +63,8 @@ export interface GroupFeedNoteDTO {
   authorId: string;
   authorName: string;
   authorImage: string | null;
+}
+
+export interface SharedWithMeNoteDTO extends GroupFeedNoteDTO {
+  groupNames: string[];
 }

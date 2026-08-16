@@ -35,6 +35,7 @@ export function NoteGrid({ notes, hasAnyNotes, onSelectNote }: NoteGridProps) {
         <NoteCard
           key={note.id}
           note={note}
+          groupChips={note.sharedGroups}
           onClick={() => onSelectNote(note.id)}
         />
       ))}

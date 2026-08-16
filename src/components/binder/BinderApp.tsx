@@ -3,8 +3,10 @@
 import { useMemo, useState, useTransition } from "react";
 import { Sidebar, type ActiveTopic } from "@/components/binder/Sidebar";
 import { NoteGrid } from "@/components/binder/NoteGrid";
+import { NoteCard } from "@/components/binder/NoteCard";
 import { NoteViewModal } from "@/components/binder/NoteViewModal";
 import { NoteFormModal } from "@/components/binder/NoteFormModal";
+import { GroupNoteViewModal } from "@/components/groups/GroupNoteViewModal";
 import { signOutAction } from "@/lib/actions/auth";
 import {
   createNote,
@@ -12,16 +14,20 @@ import {
   updateNote,
   type NoteInput,
 } from "@/lib/actions/notes";
-import type { NoteDTO, TopicSummaryDTO } from "@/lib/types";
+import type { NoteDTO, SharedWithMeNoteDTO, TopicSummaryDTO } from "@/lib/types";
 
 type ModalState =
   | { type: "closed" }
   | { type: "view"; noteId: string }
-  | { type: "form"; noteId: string | null };
+  | { type: "form"; noteId: string | null }
+  | { type: "view-shared"; noteId: string };
+
+type SearchScope = "mine" | "everywhere";
 
 interface BinderAppProps {
   notes: NoteDTO[];
   topics: TopicSummaryDTO[];
+  sharedWithMe: SharedWithMeNoteDTO[];
   userName: string;
   userEmail: string;
   userImage: string | null;
@@ -32,15 +38,28 @@ function getErrorMessage(error: unknown): string {
   return "Something went wrong. Please try again.";
 }
 
+function matchesQuery(
+  query: string,
+  title: string,
+  body: string,
+  tags: string[],
+): boolean {
+  if (!query) return true;
+  const haystack = `${title} ${body} ${tags.join(" ")}`.toLowerCase();
+  return haystack.includes(query);
+}
+
 export function BinderApp({
   notes,
   topics,
+  sharedWithMe,
   userName,
   userEmail,
   userImage,
 }: BinderAppProps) {
   const [activeTopic, setActiveTopic] = useState<ActiveTopic>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchScope, setSearchScope] = useState<SearchScope>("mine");
   const [modalState, setModalState] = useState<ModalState>({ type: "closed" });
   const [actionError, setActionError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -51,12 +70,22 @@ export function BinderApp({
       if (activeTopic !== "all" && note.topic !== activeTopic) {
         return false;
       }
-      if (!query) return true;
-      const haystack =
-        `${note.title} ${note.body} ${note.tags.join(" ")}`.toLowerCase();
-      return haystack.includes(query);
+      return matchesQuery(query, note.title, note.body, note.tags);
     });
   }, [notes, activeTopic, searchQuery]);
+
+  const everywhereResults = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    const own = notes
+      .filter((n) => matchesQuery(query, n.title, n.body, n.tags))
+      .map((n) => ({ kind: "own" as const, note: n }));
+    const shared = sharedWithMe
+      .filter((n) => matchesQuery(query, n.title, n.body, n.tags))
+      .map((n) => ({ kind: "shared" as const, note: n }));
+    return [...own, ...shared].sort((a, b) =>
+      b.note.updatedAt.localeCompare(a.note.updatedAt),
+    );
+  }, [notes, sharedWithMe, searchQuery]);
 
   const viewTitle = activeTopic === "all" ? "All entries" : activeTopic;
   const viewSub =
@@ -67,6 +96,10 @@ export function BinderApp({
   const viewingNote =
     modalState.type === "view"
       ? (notes.find((n) => n.id === modalState.noteId) ?? null)
+      : null;
+  const viewingSharedNote =
+    modalState.type === "view-shared"
+      ? (sharedWithMe.find((n) => n.id === modalState.noteId) ?? null)
       : null;
   const editingNote =
     modalState.type === "form" && modalState.noteId
@@ -121,13 +154,15 @@ export function BinderApp({
       />
 
       <main className="flex-1 px-4 pt-6 pb-14 md:px-10 md:pt-8.5">
-        <div className="mb-6.5 flex flex-wrap items-end justify-between gap-5">
+        <div className="mb-4 flex flex-wrap items-end justify-between gap-5">
           <div className="min-w-0">
             <h2 className="m-0 mb-1 truncate font-serif text-[22px] text-ink">
-              {viewTitle}
+              {searchScope === "everywhere" ? "Search everywhere" : viewTitle}
             </h2>
             <p className="m-0 truncate text-[13.5px] text-ink-soft">
-              {viewSub}
+              {searchScope === "everywhere"
+                ? "Your notes and notes shared with you through groups."
+                : viewSub}
             </p>
           </div>
           <div className="flex w-full flex-wrap items-center gap-2.5 sm:w-auto">
@@ -162,15 +197,84 @@ export function BinderApp({
           </div>
         </div>
 
+        <div className="mb-6.5 flex gap-1">
+          <button
+            type="button"
+            onClick={() => setSearchScope("mine")}
+            className={
+              "min-h-[32px] rounded px-3 py-1 font-mono text-[11px] tracking-[0.04em] uppercase transition-colors " +
+              (searchScope === "mine"
+                ? "bg-ink text-paper"
+                : "border border-line text-ink-soft hover:bg-paper-grid")
+            }
+          >
+            My notes
+          </button>
+          <button
+            type="button"
+            onClick={() => setSearchScope("everywhere")}
+            className={
+              "min-h-[32px] rounded px-3 py-1 font-mono text-[11px] tracking-[0.04em] uppercase transition-colors " +
+              (searchScope === "everywhere"
+                ? "bg-ink text-paper"
+                : "border border-line text-ink-soft hover:bg-paper-grid")
+            }
+          >
+            Everywhere
+          </button>
+        </div>
+
         {actionError && (
           <p className="mb-4 text-sm text-c-crit">{actionError}</p>
         )}
 
-        <NoteGrid
-          notes={filteredNotes}
-          hasAnyNotes={notes.length > 0}
-          onSelectNote={(id) => setModalState({ type: "view", noteId: id })}
-        />
+        {searchScope === "mine" ? (
+          <NoteGrid
+            notes={filteredNotes}
+            hasAnyNotes={notes.length > 0}
+            onSelectNote={(id) => setModalState({ type: "view", noteId: id })}
+          />
+        ) : everywhereResults.length === 0 ? (
+          <div className="py-[70px] text-center text-ink-soft">
+            <h3 className="m-0 mb-2 font-serif text-[19px] text-ink">
+              Nothing found
+            </h3>
+            <p className="m-0 text-[13.5px]">
+              Try a different search term, or check that a note has actually
+              been shared with you.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-[18px]">
+            {everywhereResults.map((item) =>
+              item.kind === "own" ? (
+                <NoteCard
+                  key={item.note.id}
+                  note={item.note}
+                  groupChips={item.note.sharedGroups}
+                  onClick={() =>
+                    setModalState({ type: "view", noteId: item.note.id })
+                  }
+                />
+              ) : (
+                <NoteCard
+                  key={item.note.id}
+                  note={item.note}
+                  author={{
+                    name: item.note.authorName,
+                    image: item.note.authorImage,
+                  }}
+                  onClick={() =>
+                    setModalState({
+                      type: "view-shared",
+                      noteId: item.note.id,
+                    })
+                  }
+                />
+              ),
+            )}
+          </div>
+        )}
       </main>
 
       {viewingNote && (
@@ -183,6 +287,10 @@ export function BinderApp({
           onDelete={() => handleDelete(viewingNote.id)}
           isDeleting={isPending}
         />
+      )}
+
+      {viewingSharedNote && (
+        <GroupNoteViewModal note={viewingSharedNote} onClose={closeModal} />
       )}
 
       {modalState.type === "form" && (
