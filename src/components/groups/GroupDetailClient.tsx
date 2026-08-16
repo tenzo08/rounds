@@ -3,6 +3,8 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { GroupsSidebar } from "@/components/groups/GroupsSidebar";
+import { NoteCard } from "@/components/binder/NoteCard";
+import { GroupNoteViewModal } from "@/components/groups/GroupNoteViewModal";
 import {
   addMember,
   removeMember,
@@ -14,6 +16,7 @@ import {
 import { signOutAction } from "@/lib/actions/auth";
 import type {
   GroupDetailDTO,
+  GroupFeedNoteDTO,
   GroupSummaryDTO,
   UserSearchResultDTO,
 } from "@/lib/types";
@@ -21,6 +24,7 @@ import type {
 interface GroupDetailClientProps {
   group: GroupDetailDTO;
   groups: GroupSummaryDTO[];
+  feedNotes: GroupFeedNoteDTO[];
   currentUserId: string;
   userName: string;
   userEmail: string;
@@ -35,6 +39,7 @@ function getErrorMessage(error: unknown): string {
 export function GroupDetailClient({
   group,
   groups,
+  feedNotes,
   currentUserId,
   userName,
   userEmail,
@@ -42,6 +47,12 @@ export function GroupDetailClient({
 }: GroupDetailClientProps) {
   const router = useRouter();
   const isAdmin = group.currentUserRole === "admin";
+
+  const [viewingFeedNoteId, setViewingFeedNoteId] = useState<string | null>(
+    null,
+  );
+  const viewingFeedNote =
+    feedNotes.find((n) => n.id === viewingFeedNoteId) ?? null;
 
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState(group.name);
@@ -213,6 +224,30 @@ export function GroupDetailClient({
 
         {error && <p className="mb-4 text-sm text-c-crit">{error}</p>}
 
+        <h3 className="m-0 mb-3 font-mono text-[11px] tracking-[0.08em] text-ink-soft uppercase">
+          Shared notes
+        </h3>
+        {feedNotes.length === 0 ? (
+          <p className="mb-8 text-[13.5px] text-ink-soft">
+            No notes shared into this group yet.
+          </p>
+        ) : (
+          <div className="mb-8 grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-[18px]">
+            {feedNotes.map((note) => (
+              <NoteCard
+                key={note.id}
+                note={note}
+                author={{ name: note.authorName, image: note.authorImage }}
+                onClick={() => setViewingFeedNoteId(note.id)}
+              />
+            ))}
+          </div>
+        )}
+
+        <h3 className="m-0 mb-3 font-mono text-[11px] tracking-[0.08em] text-ink-soft uppercase">
+          Members
+        </h3>
+
         {isAdmin && (
           <div className="mb-8 max-w-md">
             <label className="mb-1.5 block font-mono text-[10.5px] tracking-[0.08em] text-ink-soft uppercase">
@@ -312,6 +347,13 @@ export function GroupDetailClient({
           ))}
         </ul>
       </main>
+
+      {viewingFeedNote && (
+        <GroupNoteViewModal
+          note={viewingFeedNote}
+          onClose={() => setViewingFeedNoteId(null)}
+        />
+      )}
     </div>
   );
 }

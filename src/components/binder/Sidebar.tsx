@@ -1,13 +1,13 @@
 import { AppSidebarShell } from "@/components/AppSidebarShell";
-import { CATEGORIES } from "@/lib/categories";
-import type { Category } from "@/generated/prisma/client";
+import { topicColor } from "@/lib/topics";
+import type { TopicSummaryDTO } from "@/lib/types";
 
-export type ActiveCategory = "all" | Category;
+export type ActiveTopic = "all" | string;
 
 interface SidebarProps {
-  activeCategory: ActiveCategory;
-  onSelect: (category: ActiveCategory) => void;
-  counts: Record<Category, number>;
+  activeTopic: ActiveTopic;
+  onSelect: (topic: ActiveTopic) => void;
+  topics: TopicSummaryDTO[];
   allCount: number;
   userName: string;
   userEmail: string;
@@ -16,9 +16,9 @@ interface SidebarProps {
 }
 
 export function Sidebar({
-  activeCategory,
+  activeTopic,
   onSelect,
-  counts,
+  topics,
   allCount,
   userName,
   userEmail,
@@ -33,22 +33,22 @@ export function Sidebar({
       userImage={userImage}
       onSignOut={onSignOut}
     >
-      <ul className="m-0 mt-2 flex list-none gap-0.5 overflow-x-auto px-3 md:block md:overflow-visible md:px-0">
+      <ul className="m-0 mt-2 flex list-none flex-col gap-0.5 px-0">
         <Tab
           label="All entries"
           count={allCount}
           dot="#8A9199"
-          active={activeCategory === "all"}
+          active={activeTopic === "all"}
           onClick={() => onSelect("all")}
         />
-        {CATEGORIES.map((c) => (
+        {topics.map((t) => (
           <Tab
-            key={c.id}
-            label={c.label}
-            count={counts[c.id] ?? 0}
-            dot={c.hex}
-            active={activeCategory === c.id}
-            onClick={() => onSelect(c.id)}
+            key={t.name}
+            label={t.name}
+            count={t.count}
+            dot={topicColor(t.name)}
+            active={activeTopic === t.name}
+            onClick={() => onSelect(t.name)}
           />
         ))}
       </ul>
@@ -70,18 +70,18 @@ function Tab({ label, count, dot, active, onClick }: TabProps) {
       onClick={onClick}
       style={{ "--dot": dot } as React.CSSProperties}
       className={
-        "flex shrink-0 cursor-pointer items-center gap-2.5 py-2.5 pr-4.5 pl-4 text-[13.5px] font-medium transition-colors md:my-0.5 md:shrink md:border-l-[3px] md:border-l-transparent md:pr-[18px] md:pl-[22px] " +
+        "flex min-h-[40px] cursor-pointer items-center gap-2.5 border-l-[3px] py-2.5 pr-[18px] pl-[22px] text-[13.5px] font-medium transition-colors " +
         (active
-          ? "rounded-md bg-paper font-semibold text-ink md:mr-[-1px] md:rounded-l-none md:rounded-r-md md:border-l-[var(--dot)]"
-          : "rounded-md text-binder-text hover:bg-binder-soft md:rounded-none")
+          ? "rounded-r-md bg-paper font-semibold text-ink border-l-[var(--dot)]"
+          : "border-l-transparent text-binder-text hover:bg-binder-soft")
       }
     >
       <span
         className="h-[9px] w-[9px] shrink-0 rounded-[2px]"
         style={{ background: dot }}
       />
-      <span>{label}</span>
-      <span className="ml-auto font-mono text-[11px] opacity-60">
+      <span className="min-w-0 flex-1 truncate">{label}</span>
+      <span className="ml-auto shrink-0 font-mono text-[11px] opacity-60">
         {count}
       </span>
     </li>

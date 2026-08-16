@@ -1,14 +1,26 @@
-import { categoryMeta } from "@/lib/categories";
+import { topicColor } from "@/lib/topics";
 import { stripMarkdown } from "@/lib/markdown";
-import type { NoteDTO } from "@/lib/types";
+
+interface NoteCardData {
+  topic: string;
+  title: string;
+  body: string;
+  tags: string[];
+}
+
+interface NoteCardAuthor {
+  name: string;
+  image: string | null;
+}
 
 interface NoteCardProps {
-  note: NoteDTO;
+  note: NoteCardData;
+  author?: NoteCardAuthor;
   onClick: () => void;
 }
 
-export function NoteCard({ note, onClick }: NoteCardProps) {
-  const cat = categoryMeta(note.category);
+export function NoteCard({ note, author, onClick }: NoteCardProps) {
+  const color = topicColor(note.topic);
 
   return (
     <div
@@ -17,13 +29,13 @@ export function NoteCard({ note, onClick }: NoteCardProps) {
     >
       <div
         className="absolute top-0 left-0 h-[5px] w-full rounded-t-[3px]"
-        style={{ background: cat.hex }}
+        style={{ background: color }}
       />
       <div
         className="mt-1.5 mb-2 font-mono text-[10px] font-medium tracking-[0.08em] uppercase"
-        style={{ color: cat.hex }}
+        style={{ color }}
       >
-        {cat.label}
+        {note.topic}
       </div>
       <h3 className="m-0 mb-2 font-serif text-[16.5px] leading-[1.3] text-ink">
         {note.title}
@@ -32,7 +44,7 @@ export function NoteCard({ note, onClick }: NoteCardProps) {
         {stripMarkdown(note.body)}
       </p>
       {note.tags.length > 0 && (
-        <div className="flex flex-wrap gap-[5px]">
+        <div className="mb-3 flex flex-wrap gap-[5px]">
           {note.tags.slice(0, 4).map((tag) => (
             <span
               key={tag}
@@ -41,6 +53,25 @@ export function NoteCard({ note, onClick }: NoteCardProps) {
               {tag}
             </span>
           ))}
+        </div>
+      )}
+      {author && (
+        <div className="flex items-center gap-1.5 border-t border-line pt-2.5">
+          {author.image ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={author.image}
+              alt=""
+              className="h-5 w-5 shrink-0 rounded-full"
+            />
+          ) : (
+            <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-paper-grid text-[9px] font-semibold text-ink-soft">
+              {author.name.slice(0, 1).toUpperCase()}
+            </div>
+          )}
+          <span className="truncate text-[11px] text-ink-soft">
+            {author.name}
+          </span>
         </div>
       )}
     </div>

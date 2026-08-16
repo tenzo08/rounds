@@ -1,14 +1,19 @@
-import type { Category, GroupRole } from "@/generated/prisma/client";
+import type { GroupRole } from "@/generated/prisma/client";
 
 export interface NoteDTO {
   id: string;
   title: string;
-  category: Category;
+  topic: string;
   body: string;
   tags: string[];
   link: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface TopicSummaryDTO {
+  name: string;
+  count: number;
 }
 
 export interface GroupSummaryDTO {
@@ -38,4 +43,23 @@ export interface UserSearchResultDTO {
   name: string;
   email: string;
   image: string | null;
+}
+
+export interface ShareableGroupDTO {
+  groupId: string;
+  groupName: string;
+  shared: boolean;
+}
+
+export interface GroupFeedNoteDTO {
+  id: string;
+  title: string;
+  topic: string;
+  body: string;
+  tags: string[];
+  link: string | null;
+  updatedAt: string;
+  authorId: string;
+  authorName: string;
+  authorImage: string | null;
 }

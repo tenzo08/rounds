@@ -47,3 +47,12 @@ body {
   color: var(--ink);
   font-family: var(--font-sans);
 }
+
+/* Scroll stays functional everywhere; the scrollbar chrome itself is hidden. */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+*::-webkit-scrollbar {
+  display: none;
+}

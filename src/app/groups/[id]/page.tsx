@@ -3,7 +3,11 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { SignInScreen } from "@/components/SignInScreen";
 import { GroupDetailClient } from "@/components/groups/GroupDetailClient";
-import type { GroupDetailDTO, GroupSummaryDTO } from "@/lib/types";
+import type {
+  GroupDetailDTO,
+  GroupFeedNoteDTO,
+  GroupSummaryDTO,
+} from "@/lib/types";
 
 interface GroupDetailPageProps {
   params: Promise<{ id: string }>;
@@ -50,6 +54,27 @@ export default async function GroupDetailPage({
     })),
   };
 
+  // Read access here is a direct consequence of the membership check above —
+  // any member of this group can see everything shared into it.
+  const shares = await prisma.noteShare.findMany({
+    where: { groupId: id },
+    include: { note: { include: { owner: true, topic: true } } },
+    orderBy: { sharedAt: "desc" },
+  });
+
+  const feedNotes: GroupFeedNoteDTO[] = shares.map((s) => ({
+    id: s.note.id,
+    title: s.note.title,
+    topic: s.note.topic.name,
+    body: s.note.body,
+    tags: s.note.tags,
+    link: s.note.link,
+    updatedAt: s.note.updatedAt.toISOString(),
+    authorId: s.note.ownerId,
+    authorName: s.note.owner.displayName,
+    authorImage: s.note.owner.avatarUrl,
+  }));
+
   const myMemberships = await prisma.groupMembership.findMany({
     where: { userId: session.user.id },
     include: {
@@ -71,6 +96,7 @@ export default async function GroupDetailPage({
     <GroupDetailClient
       group={groupDTO}
       groups={sidebarGroups}
+      feedNotes={feedNotes}
       currentUserId={session.user.id}
       userName={session.user.name ?? session.user.email ?? "You"}
       userEmail={session.user.email ?? ""}

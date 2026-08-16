@@ -1,11 +1,10 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { Sidebar, type ActiveCategory } from "@/components/binder/Sidebar";
+import { Sidebar, type ActiveTopic } from "@/components/binder/Sidebar";
 import { NoteGrid } from "@/components/binder/NoteGrid";
 import { NoteViewModal } from "@/components/binder/NoteViewModal";
 import { NoteFormModal } from "@/components/binder/NoteFormModal";
-import { CATEGORIES, categoryMeta } from "@/lib/categories";
 import { signOutAction } from "@/lib/actions/auth";
 import {
   createNote,
@@ -13,8 +12,7 @@ import {
   updateNote,
   type NoteInput,
 } from "@/lib/actions/notes";
-import type { NoteDTO } from "@/lib/types";
-import type { Category } from "@/generated/prisma/client";
+import type { NoteDTO, TopicSummaryDTO } from "@/lib/types";
 
 type ModalState =
   | { type: "closed" }
@@ -23,6 +21,7 @@ type ModalState =
 
 interface BinderAppProps {
   notes: NoteDTO[];
+  topics: TopicSummaryDTO[];
   userName: string;
   userEmail: string;
   userImage: string | null;
@@ -35,27 +34,21 @@ function getErrorMessage(error: unknown): string {
 
 export function BinderApp({
   notes,
+  topics,
   userName,
   userEmail,
   userImage,
 }: BinderAppProps) {
-  const [activeCategory, setActiveCategory] = useState<ActiveCategory>("all");
+  const [activeTopic, setActiveTopic] = useState<ActiveTopic>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [modalState, setModalState] = useState<ModalState>({ type: "closed" });
   const [actionError, setActionError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const counts = useMemo(() => {
-    const result = {} as Record<Category, number>;
-    for (const c of CATEGORIES) result[c.id] = 0;
-    for (const note of notes) result[note.category] += 1;
-    return result;
-  }, [notes]);
-
   const filteredNotes = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     return notes.filter((note) => {
-      if (activeCategory !== "all" && note.category !== activeCategory) {
+      if (activeTopic !== "all" && note.topic !== activeTopic) {
         return false;
       }
       if (!query) return true;
@@ -63,14 +56,13 @@ export function BinderApp({
         `${note.title} ${note.body} ${note.tags.join(" ")}`.toLowerCase();
       return haystack.includes(query);
     });
-  }, [notes, activeCategory, searchQuery]);
+  }, [notes, activeTopic, searchQuery]);
 
-  const viewTitle =
-    activeCategory === "all" ? "All entries" : categoryMeta(activeCategory).label;
+  const viewTitle = activeTopic === "all" ? "All entries" : activeTopic;
   const viewSub =
-    activeCategory === "all"
-      ? "Every note across every rotation."
-      : `Notes filed under ${categoryMeta(activeCategory).label}.`;
+    activeTopic === "all"
+      ? "Every note across every topic."
+      : `Notes filed under ${activeTopic}.`;
 
   const viewingNote =
     modalState.type === "view"
@@ -116,9 +108,9 @@ export function BinderApp({
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
       <Sidebar
-        activeCategory={activeCategory}
-        onSelect={setActiveCategory}
-        counts={counts}
+        activeTopic={activeTopic}
+        onSelect={setActiveTopic}
+        topics={topics}
         allCount={notes.length}
         userName={userName}
         userEmail={userEmail}
@@ -130,14 +122,16 @@ export function BinderApp({
 
       <main className="flex-1 px-4 pt-6 pb-14 md:px-10 md:pt-8.5">
         <div className="mb-6.5 flex flex-wrap items-end justify-between gap-5">
-          <div>
-            <h2 className="m-0 mb-1 font-serif text-[22px] text-ink">
+          <div className="min-w-0">
+            <h2 className="m-0 mb-1 truncate font-serif text-[22px] text-ink">
               {viewTitle}
             </h2>
-            <p className="m-0 text-[13.5px] text-ink-soft">{viewSub}</p>
+            <p className="m-0 truncate text-[13.5px] text-ink-soft">
+              {viewSub}
+            </p>
           </div>
-          <div className="flex items-center gap-2.5">
-            <div className="relative">
+          <div className="flex w-full flex-wrap items-center gap-2.5 sm:w-auto">
+            <div className="relative min-w-0 flex-1 sm:flex-none">
               <svg
                 width="14"
                 height="14"
@@ -155,13 +149,13 @@ export function BinderApp({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="search notes, tags..."
-                className="w-[220px] rounded border border-line bg-card py-2.5 pr-3.5 pl-8 font-mono text-[13px] text-ink outline-none focus:border-ink"
+                className="w-full min-h-[42px] rounded border border-line bg-card py-2.5 pr-3.5 pl-8 font-mono text-[13px] text-ink outline-none focus:border-ink sm:w-[220px]"
               />
             </div>
             <button
               type="button"
               onClick={() => setModalState({ type: "form", noteId: null })}
-              className="rounded bg-ink px-4 py-2.5 text-[13.5px] font-semibold text-paper transition-opacity hover:opacity-88"
+              className="min-h-[42px] rounded bg-ink px-4 py-2.5 text-[13.5px] font-semibold text-paper transition-opacity hover:opacity-88"
             >
               + New entry
             </button>
@@ -194,9 +188,8 @@ export function BinderApp({
       {modalState.type === "form" && (
         <NoteFormModal
           note={editingNote}
-          defaultCategory={
-            activeCategory === "all" ? CATEGORIES[0].id : activeCategory
-          }
+          defaultTopic={activeTopic === "all" ? "" : activeTopic}
+          existingTopics={topics.map((t) => t.name)}
           onClose={closeModal}
           onSubmit={handleSubmitForm}
           isSaving={isPending}

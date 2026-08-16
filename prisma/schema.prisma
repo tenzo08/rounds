@@ -9,15 +9,6 @@ datasource db {
   provider = "postgresql"
 }
 
-enum Category {
-  fundamentals
-  pharm
-  medsurg
-  obpeds
-  psych
-  crit
-}
-
 enum GroupRole {
   admin
   member
@@ -32,6 +23,7 @@ model User {
   createdAt   DateTime @default(now()) @map("created_at")
 
   notes            Note[]
+  topics           Topic[]
   createdGroups    Group[]           @relation("GroupCreator")
   groupMemberships GroupMembership[]
 
@@ -43,7 +35,8 @@ model Note {
   ownerId   String    @map("owner_id")
   owner     User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   title     String
-  category  Category
+  topicId   String    @map("topic_id")
+  topic     Topic     @relation(fields: [topicId], references: [id], onDelete: Cascade)
   body      String
   tags      String[]
   link      String?
@@ -53,7 +46,21 @@ model Note {
   shares NoteShare[]
 
   @@index([ownerId])
+  @@index([topicId])
   @@map("notes")
+}
+
+model Topic {
+  id        String   @id @default(cuid())
+  ownerId   String   @map("owner_id")
+  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  notes Note[]
+
+  @@unique([ownerId, name])
+  @@map("topics")
 }
 
 model Group {

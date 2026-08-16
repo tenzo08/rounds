@@ -2,14 +2,14 @@
 
 import { useRef, useState } from "react";
 import { ModalShell } from "@/components/binder/ModalShell";
-import { CATEGORIES, categoryMeta } from "@/lib/categories";
+import { topicColor } from "@/lib/topics";
 import type { NoteInput } from "@/lib/actions/notes";
 import type { NoteDTO } from "@/lib/types";
-import type { Category } from "@/generated/prisma/client";
 
 interface NoteFormModalProps {
   note: NoteDTO | null;
-  defaultCategory: Category;
+  defaultTopic: string;
+  existingTopics: string[];
   onClose: () => void;
   onSubmit: (input: NoteInput) => void;
   isSaving: boolean;
@@ -17,30 +17,41 @@ interface NoteFormModalProps {
 
 export function NoteFormModal({
   note,
-  defaultCategory,
+  defaultTopic,
+  existingTopics,
   onClose,
   onSubmit,
   isSaving,
 }: NoteFormModalProps) {
   const [title, setTitle] = useState(note?.title ?? "");
-  const [category, setCategory] = useState<Category>(
-    note?.category ?? defaultCategory,
-  );
+  const [topic, setTopic] = useState(note?.topic ?? defaultTopic);
   const [body, setBody] = useState(note?.body ?? "");
   const [tagsRaw, setTagsRaw] = useState(note?.tags.join(", ") ?? "");
   const [link, setLink] = useState(note?.link ?? "");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ title?: string; topic?: string }>({});
   const titleRef = useRef<HTMLInputElement>(null);
+  const topicRef = useRef<HTMLInputElement>(null);
 
-  const cat = categoryMeta(category);
+  const color = topicColor(topic || defaultTopic);
 
   function handleSubmit() {
     const trimmedTitle = title.trim();
-    if (!trimmedTitle) {
-      setError("Title is required");
+    const trimmedTopic = topic.trim();
+    const nextError: { title?: string; topic?: string } = {};
+    if (!trimmedTitle) nextError.title = "Title is required";
+    if (!trimmedTopic) nextError.topic = "Topic is required";
+
+    if (nextError.title) {
+      setError(nextError);
       titleRef.current?.focus();
       return;
     }
+    if (nextError.topic) {
+      setError(nextError);
+      topicRef.current?.focus();
+      return;
+    }
+
     const tags = tagsRaw
       .split(",")
       .map((t) => t.trim())
@@ -48,7 +59,7 @@ export function NoteFormModal({
 
     onSubmit({
       title: trimmedTitle,
-      category,
+      topic: trimmedTopic,
       body: body.trim(),
       tags,
       link: link.trim(),
@@ -56,7 +67,7 @@ export function NoteFormModal({
   }
 
   return (
-    <ModalShell accentColor={cat.hex} onClose={onClose}>
+    <ModalShell accentColor={color} onClose={onClose}>
       <h3 className="m-0 font-serif text-[19px] text-ink">
         {note ? "Edit entry" : "New entry"}
       </h3>
@@ -68,26 +79,39 @@ export function NoteFormModal({
           value={title}
           onChange={(e) => {
             setTitle(e.target.value);
-            if (error) setError(null);
+            if (error.title) setError((prev) => ({ ...prev, title: undefined }));
           }}
           placeholder="e.g. Beta-blocker teaching points"
           className="w-full rounded border border-line bg-paper px-[11px] py-[9px] font-sans text-sm text-ink outline-none focus:border-ink"
         />
-        {error && <p className="mt-1 text-xs text-c-crit">{error}</p>}
+        {error.title && <p className="mt-1 text-xs text-c-crit">{error.title}</p>}
       </Field>
 
-      <Field label="Rotation">
-        <select
-          value={category}
-          onChange={(e) => setCategory(e.target.value as Category)}
+      <Field label="Topic">
+        <input
+          ref={topicRef}
+          type="text"
+          list="topic-suggestions"
+          value={topic}
+          onChange={(e) => {
+            setTopic(e.target.value);
+            if (error.topic) setError((prev) => ({ ...prev, topic: undefined }));
+          }}
+          placeholder="e.g. Fundamentals, or make up your own"
           className="w-full rounded border border-line bg-paper px-[11px] py-[9px] font-sans text-sm text-ink outline-none focus:border-ink"
-        >
-          {CATEGORIES.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.label}
-            </option>
+        />
+        <datalist id="topic-suggestions">
+          {existingTopics.map((t) => (
+            <option key={t} value={t} />
           ))}
-        </select>
+        </datalist>
+        {error.topic ? (
+          <p className="mt-1 text-xs text-c-crit">{error.topic}</p>
+        ) : (
+          <p className="-mt-1 font-mono text-[10.5px] text-ink-soft opacity-75">
+            Type any topic — new ones are created automatically
+          </p>
+        )}
       </Field>
 
       <Field label="Notes">
