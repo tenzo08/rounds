@@ -1,4 +1,7 @@
-import { auth, signIn, signOut } from "@/lib/auth";
+import { auth, signIn } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { BinderApp } from "@/components/binder/BinderApp";
+import type { NoteDTO } from "@/lib/types";
 
 function GoogleIcon() {
   return (
@@ -26,61 +29,63 @@ function GoogleIcon() {
 export default async function Home() {
   const session = await auth();
 
-  return (
-    <div className="flex min-h-screen flex-1 flex-col items-center justify-center bg-binder px-6">
-      <div className="flex flex-col items-center gap-3 text-center">
-        <span className="font-mono text-xs tracking-[0.2em] text-binder-text/60 uppercase">
-          Clinical Study Binder
-        </span>
-        <h1 className="font-serif text-4xl font-semibold text-binder-text">
-          The Rounds
-        </h1>
-        <p className="max-w-xs font-sans text-sm text-binder-text/70">
-          Write, organize, and share clinical notes the way a real chart
-          binder is organized.
-        </p>
-      </div>
+  if (!session?.user) {
+    return (
+      <div className="flex min-h-screen flex-1 flex-col items-center justify-center bg-binder px-6">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <span className="font-mono text-xs tracking-[0.2em] text-binder-text/60 uppercase">
+            Clinical Study Binder
+          </span>
+          <h1 className="font-serif text-4xl font-semibold text-binder-text">
+            The Rounds
+          </h1>
+          <p className="max-w-xs font-sans text-sm text-binder-text/70">
+            Write, organize, and share clinical notes the way a real chart
+            binder is organized.
+          </p>
+        </div>
 
-      <div className="mt-10">
-        {session?.user ? (
-          <div className="flex flex-col items-center gap-4">
-            <p className="font-sans text-sm text-binder-text/80">
-              Signed in as{" "}
-              <span className="font-medium text-binder-text">
-                {session.user.email}
-              </span>
-            </p>
-            <form
-              action={async () => {
-                "use server";
-                await signOut();
-              }}
-            >
-              <button
-                type="submit"
-                className="rounded-full border border-binder-text/20 px-5 py-2.5 font-sans text-sm font-medium text-binder-text transition-colors hover:bg-binder-soft"
-              >
-                Sign out
-              </button>
-            </form>
-          </div>
-        ) : (
-          <form
-            action={async () => {
-              "use server";
-              await signIn("google");
-            }}
+        <form
+          className="mt-10"
+          action={async () => {
+            "use server";
+            await signIn("google");
+          }}
+        >
+          <button
+            type="submit"
+            className="flex items-center gap-3 rounded-full bg-binder-soft px-5 py-2.5 font-sans text-sm font-medium text-binder-text transition-colors hover:bg-binder-soft/80"
           >
-            <button
-              type="submit"
-              className="flex items-center gap-3 rounded-full bg-binder-soft px-5 py-2.5 font-sans text-sm font-medium text-binder-text transition-colors hover:bg-binder-soft/80"
-            >
-              <GoogleIcon />
-              Sign in with Google
-            </button>
-          </form>
-        )}
+            <GoogleIcon />
+            Sign in with Google
+          </button>
+        </form>
       </div>
-    </div>
+    );
+  }
+
+  const notes = await prisma.note.findMany({
+    where: { ownerId: session.user.id },
+    orderBy: { updatedAt: "desc" },
+  });
+
+  const noteDTOs: NoteDTO[] = notes.map((note) => ({
+    id: note.id,
+    title: note.title,
+    category: note.category,
+    body: note.body,
+    tags: note.tags,
+    link: note.link,
+    createdAt: note.createdAt.toISOString(),
+    updatedAt: note.updatedAt.toISOString(),
+  }));
+
+  return (
+    <BinderApp
+      notes={noteDTOs}
+      userName={session.user.name ?? session.user.email ?? "You"}
+      userEmail={session.user.email ?? ""}
+      userImage={session.user.image ?? null}
+    />
   );
 }
