@@ -1,0 +1,24 @@
+# --- Planning docs: local-only, never pushed ---
+# CLAUDE.md is the Claude Code project brief; docs/ holds the spec, data
+# model, and auth constraint. README.md is intentionally NOT ignored below.
+CLAUDE.md
+docs/
+
+# --- Common environment / dependency noise (adjust once the stack is chosen) ---
+.env
+.env.local
+.env.*.local
+node_modules/
+.DS_Store
+*.log
+dist/
+build/
+out/
+.next/
+.turbo/
+coverage/
+.vercel
+*.tsbuildinfo
+next-env.d.ts
+
+/src/generated/prisma
