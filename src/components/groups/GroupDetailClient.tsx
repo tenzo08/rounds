@@ -141,6 +141,15 @@ export function GroupDetailClient({
 
   function handleToggleRole(userId: string, currentRole: "admin" | "member") {
     const nextRole = currentRole === "admin" ? "member" : "admin";
+    if (
+      userId === currentUserId &&
+      nextRole === "member" &&
+      !window.confirm(
+        "Give up your admin rights in this group? You'll keep read/write access to your own notes, but won't be able to manage members or rename/delete the group unless another admin promotes you again.",
+      )
+    ) {
+      return;
+    }
     startTransition(async () => {
       try {
         await setMemberRole(group.id, userId, nextRole);
