@@ -17,7 +17,8 @@ export default async function Home() {
 
   const userId = session.user.id;
 
-  const [notes, topics, sharedWithMeRows] = await Promise.all([
+  const [me, notes, topics, sharedWithMeRows] = await Promise.all([
+    prisma.user.findUniqueOrThrow({ where: { id: userId } }),
     prisma.note.findMany({
       where: { ownerId: userId },
       include: { topic: true, shares: { include: { group: true } } },
@@ -83,9 +84,9 @@ export default async function Home() {
       notes={noteDTOs}
       topics={topicDTOs}
       sharedWithMe={sharedWithMe}
-      userName={session.user.name ?? session.user.email ?? "You"}
-      userEmail={session.user.email ?? ""}
-      userImage={session.user.image ?? null}
+      userName={me.displayName}
+      userEmail={me.email}
+      userImage={me.avatarUrl}
     />
   );
 }

@@ -98,9 +98,9 @@ export default async function GroupDetailPage({
       groups={sidebarGroups}
       feedNotes={feedNotes}
       currentUserId={session.user.id}
-      userName={session.user.name ?? session.user.email ?? "You"}
-      userEmail={session.user.email ?? ""}
-      userImage={session.user.image ?? null}
+      userName={currentMembership.user.displayName}
+      userEmail={currentMembership.user.email}
+      userImage={currentMembership.user.avatarUrl}
     />
   );
 }

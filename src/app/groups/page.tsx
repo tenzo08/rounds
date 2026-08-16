@@ -11,15 +11,18 @@ export default async function GroupsPage() {
     return <SignInScreen />;
   }
 
-  const memberships = await prisma.groupMembership.findMany({
-    where: { userId: session.user.id },
-    include: {
-      group: {
-        include: { _count: { select: { memberships: true } } },
+  const [me, memberships] = await Promise.all([
+    prisma.user.findUniqueOrThrow({ where: { id: session.user.id } }),
+    prisma.groupMembership.findMany({
+      where: { userId: session.user.id },
+      include: {
+        group: {
+          include: { _count: { select: { memberships: true } } },
+        },
       },
-    },
-    orderBy: { joinedAt: "desc" },
-  });
+      orderBy: { joinedAt: "desc" },
+    }),
+  ]);
 
   const groups: GroupSummaryDTO[] = memberships.map((m) => ({
     id: m.group.id,
@@ -31,9 +34,9 @@ export default async function GroupsPage() {
   return (
     <GroupsPageClient
       groups={groups}
-      userName={session.user.name ?? session.user.email ?? "You"}
-      userEmail={session.user.email ?? ""}
-      userImage={session.user.image ?? null}
+      userName={me.displayName}
+      userEmail={me.email}
+      userImage={me.avatarUrl}
     />
   );
 }

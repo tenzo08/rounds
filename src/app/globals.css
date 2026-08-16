@@ -19,6 +19,18 @@
   --c-crit: #b33a3a;
 }
 
+/* Dark mode only remaps the "paper" reading surface — the binder cover and
+   rotation colors are a fixed part of the design and stay identical in both
+   themes, per docs/DESIGN.md. */
+[data-theme="dark"] {
+  --paper: #1a1f1a;
+  --paper-grid: #232922;
+  --card: #212721;
+  --ink: #ede9dc;
+  --ink-soft: #a3a89c;
+  --line: #343b34;
+}
+
 @theme inline {
   --color-paper: var(--paper);
   --color-paper-grid: var(--paper-grid);

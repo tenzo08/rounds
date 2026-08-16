@@ -13,12 +13,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         return false;
       }
 
+      // Only email is kept in sync from Google on every sign-in. displayName
+      // and avatarUrl are seeded from Google once, at account creation, and
+      // never overwritten again — a student may have customized them since.
       await prisma.user.upsert({
         where: { googleSub: profile.sub },
         update: {
           email: profile.email,
-          displayName: profile.name ?? profile.email,
-          avatarUrl: typeof profile.picture === "string" ? profile.picture : null,
         },
         create: {
           googleSub: profile.sub,

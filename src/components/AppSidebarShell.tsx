@@ -2,6 +2,8 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
+import { EditProfileModal } from "@/components/EditProfileModal";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface AppSidebarShellProps {
   activeNav: "binder" | "groups";
@@ -31,6 +33,7 @@ export function AppSidebarShell({
   children,
 }: AppSidebarShellProps) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
 
   useEffect(() => {
     if (!isDrawerOpen) return;
@@ -93,33 +96,45 @@ export function AppSidebarShell({
   );
 
   const footer = (
-    <div className="flex items-center gap-2.5 px-[22px] pt-6">
-      {userImage ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={userImage} alt="" className="h-8 w-8 shrink-0 rounded-full" />
-      ) : (
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-binder-soft text-xs font-semibold">
-          {userName.slice(0, 1).toUpperCase()}
+    <div className="px-[22px] pt-6">
+      <div className="flex items-center gap-2.5">
+        {userImage ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={userImage} alt="" className="h-8 w-8 shrink-0 rounded-full object-cover" />
+        ) : (
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-binder-soft text-xs font-semibold">
+            {userName.slice(0, 1).toUpperCase()}
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="m-0 truncate text-xs font-medium text-binder-text">
+            {userName}
+          </p>
+          <p className="m-0 truncate text-[10.5px] text-[#6E757C]">
+            {userEmail}
+          </p>
         </div>
-      )}
-      <div className="min-w-0 flex-1">
-        <p className="m-0 truncate text-xs font-medium text-binder-text">
-          {userName}
-        </p>
-        <p className="m-0 truncate text-[10.5px] text-[#6E757C]">
-          {userEmail}
-        </p>
+        <button
+          type="button"
+          onClick={() => {
+            closeDrawer();
+            onSignOut();
+          }}
+          className="shrink-0 font-mono text-[10.5px] text-[#9AA1A8] uppercase transition-colors hover:text-binder-text"
+        >
+          Sign out
+        </button>
       </div>
-      <button
-        type="button"
-        onClick={() => {
-          closeDrawer();
-          onSignOut();
-        }}
-        className="shrink-0 font-mono text-[10.5px] text-[#9AA1A8] uppercase transition-colors hover:text-binder-text"
-      >
-        Sign out
-      </button>
+      <div className="mt-2.5 flex items-center justify-between">
+        <button
+          type="button"
+          onClick={() => setIsEditProfileOpen(true)}
+          className="font-mono text-[10.5px] text-[#9AA1A8] uppercase transition-colors hover:text-binder-text"
+        >
+          Edit profile
+        </button>
+        <ThemeToggle />
+      </div>
     </div>
   );
 
@@ -180,6 +195,14 @@ export function AppSidebarShell({
         <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
         {footer}
       </aside>
+
+      {isEditProfileOpen && (
+        <EditProfileModal
+          currentName={userName}
+          currentAvatarUrl={userImage}
+          onClose={() => setIsEditProfileOpen(false)}
+        />
+      )}
     </>
   );
 }
