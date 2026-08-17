@@ -1,5 +1,5 @@
 import { config } from "dotenv";
-config({ path: ".env.production.local" });
+config({ path: ".env.production-sg.local" });
 
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client.ts";

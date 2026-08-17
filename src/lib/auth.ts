@@ -6,10 +6,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [Google],
   session: {
     strategy: "jwt",
+    // A student is signed out after 10 minutes of no activity — every page
+    // load within that window pushes the expiry back out (updateAge), so
+    // active use never gets interrupted, but a genuinely idle tab expires.
+    maxAge: 10 * 60,
+    updateAge: 60,
   },
   callbacks: {
     async signIn({ profile }) {
       if (!profile?.sub || !profile.email) {
+        console.error(
+          "Google sign-in denied — profile missing sub/email:",
+          JSON.stringify(profile),
+        );
         return false;
       }
 
