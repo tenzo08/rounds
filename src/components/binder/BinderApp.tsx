@@ -23,6 +23,7 @@ import {
   updateNote,
   bulkDeleteNotes,
   deleteTopic,
+  renameTopic,
   type NoteInput,
 } from "@/lib/actions/notes";
 import type {
@@ -261,6 +262,23 @@ export function BinderApp({
     });
   }
 
+  function handleRenameTopic(topic: string) {
+    const nextName = window.prompt(`Rename "${topic}" to:`, topic)?.trim();
+    if (!nextName || nextName === topic) return;
+    startTransition(async () => {
+      try {
+        await renameTopic(topic, nextName);
+        setSelection((prev) =>
+          (prev.type === "topic" || prev.type === "folder") && prev.topic === topic
+            ? { ...prev, topic: nextName }
+            : prev,
+        );
+      } catch (error) {
+        setActionError(getErrorMessage(error));
+      }
+    });
+  }
+
   function handleDeleteTopic(topic: string) {
     const count = topics.find((t) => t.name === topic)?.count ?? 0;
     if (
@@ -484,16 +502,28 @@ export function BinderApp({
                     )}
                     {searchScope === "mine" &&
                       (selection.type === "topic" || selection.type === "folder") && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            handleDeleteTopic(selection.topic);
-                            setIsMoreOpen(false);
-                          }}
-                          className="block w-full px-3.5 py-2.5 text-left text-[13px] text-c-crit hover:bg-c-crit/5"
-                        >
-                          Delete topic
-                        </button>
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleRenameTopic(selection.topic);
+                              setIsMoreOpen(false);
+                            }}
+                            className="block w-full px-3.5 py-2.5 text-left text-[13px] text-ink hover:bg-paper-grid"
+                          >
+                            Rename topic
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleDeleteTopic(selection.topic);
+                              setIsMoreOpen(false);
+                            }}
+                            className="block w-full px-3.5 py-2.5 text-left text-[13px] text-c-crit hover:bg-c-crit/5"
+                          >
+                            Delete topic
+                          </button>
+                        </>
                       )}
                   </div>
                 )}

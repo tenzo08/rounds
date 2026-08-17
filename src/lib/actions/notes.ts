@@ -175,6 +175,49 @@ export async function bulkDeleteNotes(
   return { deleted: owned.length };
 }
 
+export async function renameTopic(
+  topicName: string,
+  newName: string,
+): Promise<void> {
+  const userId = await requireUserId();
+  const validOld = z.string().trim().min(1).max(60).parse(topicName);
+  const validNew = z.string().trim().min(1).max(60).parse(newName);
+
+  if (validOld === validNew) return;
+
+  const existing = await prisma.topic.findUnique({
+    where: { ownerId_name: { ownerId: userId, name: validOld } },
+    select: { id: true },
+  });
+  if (!existing) {
+    throw new Error("Topic not found");
+  }
+
+  const conflict = await prisma.topic.findUnique({
+    where: { ownerId_name: { ownerId: userId, name: validNew } },
+    select: { id: true },
+  });
+  if (conflict) {
+    throw new Error(`A topic named "${validNew}" already exists`);
+  }
+
+  const noteIds = (
+    await prisma.note.findMany({
+      where: { ownerId: userId, folder: { topicId: existing.id } },
+      select: { id: true },
+    })
+  ).map((n) => n.id);
+  const affectedGroupIds = await findAffectedGroupIds(noteIds);
+
+  await prisma.topic.update({
+    where: { id: existing.id },
+    data: { name: validNew },
+  });
+
+  revalidatePath("/");
+  await notifyGroups(affectedGroupIds);
+}
+
 export async function deleteTopic(topicName: string): Promise<void> {
   const userId = await requireUserId();
   const validName = z.string().trim().min(1).max(60).parse(topicName);
