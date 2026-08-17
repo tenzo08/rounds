@@ -61,14 +61,21 @@ export function normalizeFocus(focus: string): string {
 
 export const FLASHCARD_IMPORT_PROMPT = `Please create a markdown flashcard file based on the PDF I've attached to this conversation.
 
-Go through the PDF and pull out every important word, term, drug name, lab value, procedure, and concept — anything a nursing student would reasonably be tested on. Do not skip minor-looking terms just because they're mentioned briefly; if it's a real term with a real definition in the material, it gets its own card.
+Your job is extraction, not summarization. Go through the PDF systematically — section by section, paragraph by paragraph — and pull out every important word: every named term, drug, lab value, sign/symptom, procedure, anatomical structure, classification, and concept a nursing student could be tested on. Do not filter by "importance" beyond that; if the material defines it, names it, or explains what it does, it earns its own card. Do not skip terms just because they only appear in one sentence — a one-sentence definition is still a full card.
 
-Each card must be atomic: one single word, term, or short phrase per card — never bundle multiple concepts into one card, and never make a card that summarizes a whole section. If a sentence in the PDF defines or explains three different terms, that's three separate cards, not one.
+ATOMICITY IS THE MOST IMPORTANT RULE: each card covers exactly ONE word or phrase. Never combine two or more terms into a single card, even if the source material discusses them together in the same sentence or paragraph.
+
+- WRONG: one card titled "Loop and Thiazide Diuretics" describing both drug classes at once.
+- RIGHT: a separate "Furosemide" (or "Loop diuretics") card, and a separate "Hydrochlorothiazide" (or "Thiazide diuretics") card.
+- WRONG: one card titled "Signs of Shock" that lists tachycardia, hypotension, and cool clammy skin all in the description.
+- RIGHT: three separate cards — one for "Tachycardia" (as a shock sign), one for "Hypotension," one for "Cool, clammy skin" — each with its own focused explanation.
+
+If you catch yourself writing a description with a list of several distinct named things in it, stop and split it into that many separate cards instead.
 
 Convert the material into flashcards using EXACTLY this Markdown format, and output ONLY the markdown — no commentary before or after it:
 
 ## <short, specific card title — usually the same as the focus term>
 Focus: <the single word or short phrase being defined — this is the card's front>
-Description: <a concise, self-contained 2-5 sentence definition/explanation of that one term — this is the card's back. It should make sense on its own, without needing to see any other card>
+Description: <a concise, self-contained 2-5 sentence definition/explanation of that ONE term only — this is the card's back. It should make sense on its own, without needing to see any other card>
 
-Repeat that block for every distinct concept, term, drug, lab value, or fact in the PDF worth memorizing on its own. Err on the side of MORE small cards rather than fewer large ones — a chapter with 40 important terms should produce 40 cards, not 5.`;
+Repeat that block for every distinct term in the PDF. Err heavily on the side of MORE, smaller cards rather than fewer, larger ones — a chapter with 40 important terms should produce roughly 40 cards, not 5. When unsure whether to split something into more cards, split it.`;
