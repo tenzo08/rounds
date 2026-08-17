@@ -13,6 +13,7 @@ import { BulkShareModal } from "@/components/binder/BulkShareModal";
 import { QuizModal, type QuizCard } from "@/components/binder/QuizModal";
 import { GroupNoteViewModal } from "@/components/groups/GroupNoteViewModal";
 import { IdleLogout } from "@/components/IdleLogout";
+import { OnboardingModal } from "@/components/OnboardingModal";
 import { signOutAction } from "@/lib/actions/auth";
 import { topicColor } from "@/lib/topics";
 import {
@@ -51,6 +52,7 @@ interface BinderAppProps {
   userName: string;
   userEmail: string;
   userImage: string | null;
+  hasOnboarded: boolean;
 }
 
 function getErrorMessage(error: unknown): string {
@@ -86,7 +88,9 @@ export function BinderApp({
   userName,
   userEmail,
   userImage,
+  hasOnboarded,
 }: BinderAppProps) {
+  const [isOnboarded, setIsOnboarded] = useState(hasOnboarded);
   const [selection, setSelection] = useState<ActiveSelection>({ type: "all" });
   const [searchQuery, setSearchQuery] = useState("");
   const [searchScope, setSearchScope] = useState<SearchScope>("mine");
@@ -306,6 +310,13 @@ export function BinderApp({
   return (
     <div className="flex h-dvh flex-col overflow-hidden md:flex-row">
       <IdleLogout />
+      {!isOnboarded && (
+        <OnboardingModal
+          currentName={userName}
+          currentAvatarUrl={userImage}
+          onDone={() => setIsOnboarded(true)}
+        />
+      )}
       <Sidebar
         selection={selection}
         onSelect={(next) => {

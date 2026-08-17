@@ -2,13 +2,17 @@
 
 import { useRef, useState } from "react";
 import { ModalShell } from "@/components/binder/ModalShell";
-import { updateProfile } from "@/lib/actions/profile";
-import { downscaleToDataUrl } from "@/lib/avatarImage";
+import { completeOnboarding } from "@/lib/actions/profile";
+import {
+  AVATAR_ICONS,
+  downscaleToDataUrl,
+  renderIconToDataUrl,
+} from "@/lib/avatarImage";
 
-interface EditProfileModalProps {
+interface OnboardingModalProps {
   currentName: string;
   currentAvatarUrl: string | null;
-  onClose: () => void;
+  onDone: () => void;
 }
 
 function getErrorMessage(error: unknown): string {
@@ -16,20 +20,13 @@ function getErrorMessage(error: unknown): string {
   return "Something went wrong. Please try again.";
 }
 
-export function EditProfileModal({
+export function OnboardingModal({
   currentName,
   currentAvatarUrl,
-  onClose,
-}: EditProfileModalProps) {
+  onDone,
+}: OnboardingModalProps) {
   const [displayName, setDisplayName] = useState(currentName);
   const [previewUrl, setPreviewUrl] = useState(currentAvatarUrl ?? "");
-  // Tracks whether the picture was actually touched this session — lets
-  // "just changed the nickname" saves leave an existing (e.g. Google-seeded)
-  // avatar alone instead of wiping it, since the server only accepts
-  // uploaded data: URIs, never the old http(s) link.
-  const [pendingAvatar, setPendingAvatar] = useState<string | undefined>(
-    undefined,
-  );
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
@@ -42,19 +39,18 @@ export function EditProfileModal({
     try {
       const dataUrl = await downscaleToDataUrl(file);
       setPreviewUrl(dataUrl);
-      setPendingAvatar(dataUrl);
       setError(null);
     } catch (err) {
       setError(getErrorMessage(err));
     }
   }
 
-  function handleRemove() {
-    setPreviewUrl("");
-    setPendingAvatar("");
+  function handlePickIcon(emoji: string, color: string) {
+    const dataUrl = renderIconToDataUrl(emoji, color);
+    if (dataUrl) setPreviewUrl(dataUrl);
   }
 
-  async function handleSave() {
+  async function handleContinue() {
     const trimmedName = displayName.trim();
     if (!trimmedName) {
       setError("Nickname is required");
@@ -64,8 +60,8 @@ export function EditProfileModal({
     setIsSaving(true);
     setError(null);
     try {
-      await updateProfile({ displayName: trimmedName, avatarUrl: pendingAvatar });
-      onClose();
+      await completeOnboarding({ displayName: trimmedName, avatarUrl: previewUrl });
+      onDone();
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -74,19 +70,25 @@ export function EditProfileModal({
   }
 
   return (
-    <ModalShell accentColor="#1E2823" onClose={onClose}>
-      <h3 className="m-0 font-serif text-[19px] text-ink">Edit profile</h3>
+    <ModalShell accentColor="#4A7C59" onClose={onDone}>
+      <h3 className="m-0 pr-6 font-serif text-[19px] text-ink">
+        Welcome to The Rounds
+      </h3>
+      <p className="mt-1.5 mb-4 text-[13px] text-ink-soft">
+        Set a nickname classmates will see, and optionally pick a picture —
+        upload one, choose an icon, or skip and use your initial.
+      </p>
 
-      <div className="mt-4 flex items-center gap-3">
+      <div className="flex items-center gap-3">
         {previewUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={previewUrl}
             alt=""
-            className="h-14 w-14 shrink-0 rounded-full object-cover"
+            className="h-16 w-16 shrink-0 rounded-full object-cover"
           />
         ) : (
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-paper-grid text-base font-semibold text-ink-soft">
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-paper-grid text-lg font-semibold text-ink-soft">
             {(displayName || "?").slice(0, 1).toUpperCase()}
           </div>
         )}
@@ -106,12 +108,32 @@ export function EditProfileModal({
           {previewUrl && (
             <button
               type="button"
-              onClick={handleRemove}
+              onClick={() => setPreviewUrl("")}
               className="ml-2 font-mono text-[10.5px] text-ink-soft uppercase hover:text-ink"
             >
               Remove
             </button>
           )}
+        </div>
+      </div>
+
+      <div className="mt-4">
+        <p className="m-0 mb-1.5 font-mono text-[10.5px] tracking-[0.08em] text-ink-soft uppercase">
+          Or choose an icon
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {AVATAR_ICONS.map(({ emoji, color }) => (
+            <button
+              key={emoji}
+              type="button"
+              onClick={() => handlePickIcon(emoji, color)}
+              style={{ background: color }}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-xl transition-opacity hover:opacity-80"
+              aria-label={`Use ${emoji} icon`}
+            >
+              {emoji}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -134,21 +156,14 @@ export function EditProfileModal({
 
       {error && <p className="mt-2 text-xs text-c-crit">{error}</p>}
 
-      <div className="mt-[22px] flex justify-end gap-2">
+      <div className="mt-[22px] flex justify-end">
         <button
           type="button"
-          onClick={onClose}
-          className="rounded border border-line px-4 py-2.5 text-[13.5px] font-semibold text-ink transition-opacity hover:opacity-88"
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
-          onClick={handleSave}
+          onClick={handleContinue}
           disabled={isSaving}
           className="rounded bg-ink px-4 py-2.5 text-[13.5px] font-semibold text-paper transition-opacity hover:opacity-88 disabled:opacity-50"
         >
-          {isSaving ? "Saving…" : "Save"}
+          {isSaving ? "Saving…" : "Continue"}
         </button>
       </div>
     </ModalShell>

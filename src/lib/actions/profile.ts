@@ -49,3 +49,37 @@ export async function updateProfile(input: ProfileInput): Promise<void> {
   revalidatePath("/");
   revalidatePath("/groups", "layout");
 }
+
+const onboardingInputSchema = z.object({
+  displayName: z.string().trim().min(1, "Nickname is required").max(60),
+  avatarUrl: z
+    .string()
+    .trim()
+    .max(MAX_AVATAR_LENGTH, "Image is too large")
+    .refine(
+      (v) => v === "" || /^data:image\/(png|jpeg|webp);base64,/.test(v),
+      "Must be an uploaded image or a chosen icon",
+    ),
+});
+
+export type OnboardingInput = z.infer<typeof onboardingInputSchema>;
+
+export async function completeOnboarding(input: OnboardingInput): Promise<void> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    throw new Error("Not signed in");
+  }
+  const data = onboardingInputSchema.parse(input);
+
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: {
+      displayName: data.displayName,
+      avatarUrl: data.avatarUrl || null,
+      hasOnboarded: true,
+    },
+  });
+
+  revalidatePath("/");
+  revalidatePath("/groups", "layout");
+}

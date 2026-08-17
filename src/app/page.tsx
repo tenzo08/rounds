@@ -110,6 +110,7 @@ export default async function Home() {
       userName={me.displayName}
       userEmail={me.email}
       userImage={me.avatarUrl}
+      hasOnboarded={me.hasOnboarded}
     />
   );
 }
