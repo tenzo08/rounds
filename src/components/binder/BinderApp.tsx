@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Sidebar, type ActiveSelection } from "@/components/binder/Sidebar";
 import { NoteGrid } from "@/components/binder/NoteGrid";
 import { NoteCard } from "@/components/binder/NoteCard";
@@ -102,6 +102,19 @@ export function BinderApp({
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [scopeShareIds, setScopeShareIds] = useState<string[]>([]);
+  const [isMoreOpen, setIsMoreOpen] = useState(false);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isMoreOpen) return;
+    function handlePointerDown(e: PointerEvent) {
+      if (!moreMenuRef.current?.contains(e.target as Node)) {
+        setIsMoreOpen(false);
+      }
+    }
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [isMoreOpen]);
 
   const browsingTopic =
     selection.type === "topic" && searchQuery.trim().length === 0
@@ -372,26 +385,6 @@ export function BinderApp({
                 ? "Your flashcards and flashcards shared with you through groups."
                 : viewSub}
             </p>
-            {searchScope === "mine" && (
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleOpenScopeShare}
-                  className="min-h-[28px] rounded border border-line px-2 py-1 font-mono text-[10px] text-ink-soft uppercase transition-colors hover:border-ink hover:text-ink sm:min-h-[32px] sm:px-2.5 sm:text-[10.5px]"
-                >
-                  {scopeShareLabel}
-                </button>
-                {(selection.type === "topic" || selection.type === "folder") && (
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteTopic(selection.topic)}
-                    className="min-h-[28px] rounded border border-c-crit/40 px-2 py-1 font-mono text-[10px] text-c-crit uppercase transition-colors hover:border-c-crit hover:bg-c-crit/5 sm:min-h-[32px] sm:px-2.5 sm:text-[10.5px]"
-                  >
-                    Delete topic
-                  </button>
-                )}
-              </div>
-            )}
           </div>
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:gap-2.5">
             <div className="relative w-full sm:w-[200px]">
@@ -415,47 +408,96 @@ export function BinderApp({
                 className="w-full min-h-[36px] rounded border border-line bg-card py-1.5 pr-3.5 pl-8 font-mono text-[13px] text-ink outline-none focus:border-ink sm:min-h-[44px] sm:py-2.5"
               />
             </div>
-            <div className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap sm:items-center sm:gap-2.5">
-              {searchScope === "mine" && (
-                <button
-                  type="button"
-                  onClick={toggleSelectMode}
-                  className={
-                    "min-h-[34px] rounded border border-line px-2.5 py-1.5 text-[12px] font-semibold transition-opacity hover:opacity-88 sm:min-h-[44px] sm:px-3.5 sm:py-2.5 sm:text-[13.5px] " +
-                    (isSelectMode ? "bg-ink text-paper" : "text-ink")
-                  }
-                >
-                  {isSelectMode ? "Cancel" : "Select"}
-                </button>
-              )}
+            <div className="flex items-center gap-1.5 sm:gap-2.5">
               <button
                 type="button"
                 onClick={() => setModalState({ type: "quiz" })}
-                className="min-h-[34px] rounded border border-line px-2.5 py-1.5 text-[12px] font-semibold text-ink transition-opacity hover:opacity-88 sm:min-h-[44px] sm:px-3.5 sm:py-2.5 sm:text-[13.5px]"
+                className="min-h-[34px] flex-1 rounded border border-line px-2.5 py-1.5 text-[12px] font-semibold text-ink transition-opacity hover:opacity-88 sm:min-h-[44px] sm:flex-none sm:px-3.5 sm:py-2.5 sm:text-[13.5px]"
               >
                 Quiz
               </button>
               <button
                 type="button"
-                onClick={() => setModalState({ type: "import" })}
-                className="min-h-[34px] rounded border border-line px-2.5 py-1.5 text-[12px] font-semibold text-ink transition-opacity hover:opacity-88 sm:min-h-[44px] sm:px-3.5 sm:py-2.5 sm:text-[13.5px]"
-              >
-                Upload .md
-              </button>
-              <button
-                type="button"
-                onClick={() => setModalState({ type: "duplicates" })}
-                className="min-h-[34px] rounded border border-line px-2.5 py-1.5 text-[12px] font-semibold text-ink transition-opacity hover:opacity-88 sm:min-h-[44px] sm:px-3.5 sm:py-2.5 sm:text-[13.5px]"
-              >
-                Check duplicates
-              </button>
-              <button
-                type="button"
                 onClick={() => setModalState({ type: "form", noteId: null })}
-                className="min-h-[34px] rounded bg-ink px-2.5 py-1.5 text-[12px] font-semibold text-paper transition-opacity hover:opacity-88 sm:min-h-[44px] sm:px-4 sm:py-2.5 sm:text-[13.5px]"
+                className="min-h-[34px] flex-1 rounded bg-ink px-2.5 py-1.5 text-[12px] font-semibold text-paper transition-opacity hover:opacity-88 sm:min-h-[44px] sm:flex-none sm:px-4 sm:py-2.5 sm:text-[13.5px]"
               >
                 + New entry
               </button>
+              <div className="relative shrink-0" ref={moreMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsMoreOpen((v) => !v)}
+                  aria-label="More actions"
+                  aria-expanded={isMoreOpen}
+                  className={
+                    "flex min-h-[34px] min-w-[34px] items-center justify-center rounded border border-line text-[15px] font-semibold text-ink transition-opacity hover:opacity-88 sm:min-h-[44px] sm:min-w-[44px] " +
+                    (isMoreOpen ? "bg-ink text-paper" : "")
+                  }
+                >
+                  &#8942;
+                </button>
+                {isMoreOpen && (
+                  <div className="absolute top-full right-0 z-20 mt-1.5 w-56 rounded border border-line bg-card py-1 shadow-lg">
+                    {searchScope === "mine" && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          toggleSelectMode();
+                          setIsMoreOpen(false);
+                        }}
+                        className="block w-full px-3.5 py-2.5 text-left text-[13px] text-ink hover:bg-paper-grid"
+                      >
+                        {isSelectMode ? "Cancel select" : "Select"}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setModalState({ type: "import" });
+                        setIsMoreOpen(false);
+                      }}
+                      className="block w-full px-3.5 py-2.5 text-left text-[13px] text-ink hover:bg-paper-grid"
+                    >
+                      Upload .md
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setModalState({ type: "duplicates" });
+                        setIsMoreOpen(false);
+                      }}
+                      className="block w-full px-3.5 py-2.5 text-left text-[13px] text-ink hover:bg-paper-grid"
+                    >
+                      Check duplicates
+                    </button>
+                    {searchScope === "mine" && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleOpenScopeShare();
+                          setIsMoreOpen(false);
+                        }}
+                        className="block w-full px-3.5 py-2.5 text-left text-[13px] text-ink hover:bg-paper-grid"
+                      >
+                        {scopeShareLabel}
+                      </button>
+                    )}
+                    {searchScope === "mine" &&
+                      (selection.type === "topic" || selection.type === "folder") && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleDeleteTopic(selection.topic);
+                            setIsMoreOpen(false);
+                          }}
+                          className="block w-full px-3.5 py-2.5 text-left text-[13px] text-c-crit hover:bg-c-crit/5"
+                        >
+                          Delete topic
+                        </button>
+                      )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
