@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { ModalShell } from "@/components/binder/ModalShell";
 import { topicColor } from "@/lib/topics";
 import { renderMarkdown } from "@/lib/markdown";
+import { redactFocusFromText } from "@/lib/mdFlashcards";
 
 export interface QuizCard {
   id: string;
@@ -287,7 +288,9 @@ export function QuizModal({ title, cards, onClose }: QuizModalProps) {
             className="rounded-[3px] px-3.5 py-3 text-sm leading-[1.6] text-ink"
             style={{ background: `${color}1a` }}
           >
-            {renderMarkdown(current.description)}
+            {renderMarkdown(
+              redactFocusFromText(current.description, current.focus),
+            )}
           </div>
 
           <div className="mt-3.5">
