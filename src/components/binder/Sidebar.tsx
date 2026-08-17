@@ -19,6 +19,7 @@ interface SidebarProps {
   userEmail: string;
   userImage: string | null;
   onSignOut: () => void;
+  onDropNote?: (noteId: string, topic: string, folder: string) => void;
 }
 
 export function Sidebar({
@@ -30,6 +31,7 @@ export function Sidebar({
   userEmail,
   userImage,
   onSignOut,
+  onDropNote,
 }: SidebarProps) {
   const activeTopicName =
     selection.type === "topic" || selection.type === "folder"
@@ -95,6 +97,11 @@ export function Sidebar({
                       }
                       onClick={() =>
                         onSelect({ type: "folder", topic: t.name, folder: f.name })
+                      }
+                      onDropNote={
+                        onDropNote
+                          ? (noteId) => onDropNote(noteId, t.name, f.name)
+                          : undefined
                       }
                     />
                   ))}
@@ -173,20 +180,46 @@ function FolderRow({
   count,
   active,
   onClick,
+  onDropNote,
 }: {
   label: string;
   count: number;
   active: boolean;
   onClick: () => void;
+  onDropNote?: (noteId: string) => void;
 }) {
+  const [isDragOver, setIsDragOver] = useState(false);
+
   return (
     <li
       onClick={onClick}
+      onDragOver={
+        onDropNote
+          ? (e) => {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "move";
+              setIsDragOver(true);
+            }
+          : undefined
+      }
+      onDragLeave={onDropNote ? () => setIsDragOver(false) : undefined}
+      onDrop={
+        onDropNote
+          ? (e) => {
+              e.preventDefault();
+              setIsDragOver(false);
+              const noteId = e.dataTransfer.getData("text/plain");
+              if (noteId) onDropNote(noteId);
+            }
+          : undefined
+      }
       className={
         "flex min-h-[36px] cursor-pointer items-center gap-2 border-l-[3px] py-2 pr-[18px] pl-[42px] text-[12.5px] transition-colors " +
-        (active
-          ? "rounded-r-md bg-paper font-semibold text-ink border-l-ink/40"
-          : "border-l-transparent text-binder-text/85 hover:bg-binder-soft")
+        (isDragOver
+          ? "border-l-ink bg-paper-grid"
+          : active
+            ? "rounded-r-md bg-paper font-semibold text-ink border-l-ink/40"
+            : "border-l-transparent text-binder-text/85 hover:bg-binder-soft")
       }
     >
       <span className="min-w-0 flex-1 truncate">{label}</span>

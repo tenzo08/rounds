@@ -61,10 +61,14 @@ export function normalizeFocus(focus: string): string {
 
 export const FLASHCARD_IMPORT_PROMPT = `Please create a markdown flashcard file based on the PDF I've attached to this conversation.
 
+Go through the PDF and pull out every important word, term, drug name, lab value, procedure, and concept — anything a nursing student would reasonably be tested on. Do not skip minor-looking terms just because they're mentioned briefly; if it's a real term with a real definition in the material, it gets its own card.
+
+Each card must be atomic: one single word, term, or short phrase per card — never bundle multiple concepts into one card, and never make a card that summarizes a whole section. If a sentence in the PDF defines or explains three different terms, that's three separate cards, not one.
+
 Convert the material into flashcards using EXACTLY this Markdown format, and output ONLY the markdown — no commentary before or after it:
 
-## <short, specific card title>
-Focus: <the one key word or short phrase to memorize>
-Description: <a concise 2-5 sentence explanation of what a nursing student needs to remember about it>
+## <short, specific card title — usually the same as the focus term>
+Focus: <the single word or short phrase being defined — this is the card's front>
+Description: <a concise, self-contained 2-5 sentence definition/explanation of that one term — this is the card's back. It should make sense on its own, without needing to see any other card>
 
-Repeat that block for every distinct concept, term, drug, lab value, or fact in the PDF worth memorizing on its own. Break a big topic into MANY small, focused cards rather than one giant note — each card should stand alone as a proper flashcard, front (focus) and back (description).`;
+Repeat that block for every distinct concept, term, drug, lab value, or fact in the PDF worth memorizing on its own. Err on the side of MORE small cards rather than fewer large ones — a chapter with 40 important terms should produce 40 cards, not 5.`;

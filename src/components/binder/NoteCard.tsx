@@ -15,24 +15,62 @@ interface NoteCardAuthor {
 }
 
 interface NoteCardProps {
+  id: string;
   note: NoteCardData;
   author?: NoteCardAuthor;
   groupChips?: string[];
   onClick: () => void;
+  isSelectMode?: boolean;
+  isSelected?: boolean;
+  onToggleSelect?: () => void;
+  isDraggable?: boolean;
+  onDragStart?: (id: string) => void;
 }
 
-export function NoteCard({ note, author, groupChips, onClick }: NoteCardProps) {
+export function NoteCard({
+  id,
+  note,
+  author,
+  groupChips,
+  onClick,
+  isSelectMode,
+  isSelected,
+  onToggleSelect,
+  isDraggable,
+  onDragStart,
+}: NoteCardProps) {
   const color = topicColor(note.topic);
 
   return (
     <div
-      onClick={onClick}
-      className="relative cursor-pointer rounded-[3px] border border-line bg-card px-4 pt-4 pb-3.5 shadow-[0_1px_0_rgba(0,0,0,0.04)] transition-[transform,box-shadow] duration-150 ease-out motion-reduce:transition-none motion-safe:hover:-translate-y-[3px] motion-safe:hover:rotate-[-0.3deg] motion-safe:hover:shadow-[0_10px_20px_rgba(30,40,35,0.12)]"
+      onClick={isSelectMode ? onToggleSelect : onClick}
+      draggable={isDraggable && !isSelectMode}
+      onDragStart={
+        isDraggable && !isSelectMode
+          ? (e) => {
+              e.dataTransfer.setData("text/plain", id);
+              e.dataTransfer.effectAllowed = "move";
+              onDragStart?.(id);
+            }
+          : undefined
+      }
+      className={
+        "relative cursor-pointer rounded-[3px] border bg-card px-4 pt-4 pb-3.5 shadow-[0_1px_0_rgba(0,0,0,0.04)] transition-[transform,box-shadow] duration-150 ease-out motion-reduce:transition-none motion-safe:hover:-translate-y-[3px] motion-safe:hover:rotate-[-0.3deg] motion-safe:hover:shadow-[0_10px_20px_rgba(30,40,35,0.12)] " +
+        (isSelected ? "border-ink ring-2 ring-ink" : "border-line")
+      }
     >
       <div
         className="absolute top-0 left-0 h-[5px] w-full rounded-t-[3px]"
         style={{ background: color }}
       />
+      {isSelectMode && (
+        <input
+          type="checkbox"
+          checked={!!isSelected}
+          readOnly
+          className="absolute top-2.5 right-2.5 h-4 w-4"
+        />
+      )}
       <div
         className="mt-1.5 mb-2 truncate font-mono text-[10px] font-medium tracking-[0.08em] uppercase"
         style={{ color }}

@@ -96,7 +96,7 @@ export function AppSidebarShell({
   );
 
   const footer = (
-    <div className="px-[22px] pt-6">
+    <div className="mb-2 border-b border-[#333d47] px-[22px] pb-5">
       <div className="flex items-center gap-2.5">
         {userImage ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -181,9 +181,9 @@ export function AppSidebarShell({
               ×
             </button>
             {brandBlock}
+            {footer}
             {navLinks}
             <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
-            {footer}
           </div>
         </div>
       )}
@@ -191,9 +191,9 @@ export function AppSidebarShell({
       {/* Desktop sidebar */}
       <aside className="hidden bg-binder py-7 text-binder-text md:sticky md:top-0 md:flex md:h-screen md:w-[220px] md:shrink-0 md:flex-col">
         {brandBlock}
+        {footer}
         {navLinks}
         <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
-        {footer}
       </aside>
 
       {isEditProfileOpen && (

@@ -4,19 +4,30 @@ import { useMemo, useState, useTransition } from "react";
 import { Sidebar, type ActiveSelection } from "@/components/binder/Sidebar";
 import { NoteGrid } from "@/components/binder/NoteGrid";
 import { NoteCard } from "@/components/binder/NoteCard";
+import { TileGrid } from "@/components/binder/TileGrid";
 import { NoteViewModal } from "@/components/binder/NoteViewModal";
 import { NoteFormModal } from "@/components/binder/NoteFormModal";
 import { MdImportModal } from "@/components/binder/MdImportModal";
+import { BulkMoveModal } from "@/components/binder/BulkMoveModal";
+import { BulkShareModal } from "@/components/binder/BulkShareModal";
 import { QuizModal, type QuizCard } from "@/components/binder/QuizModal";
 import { GroupNoteViewModal } from "@/components/groups/GroupNoteViewModal";
 import { signOutAction } from "@/lib/actions/auth";
+import { topicColor } from "@/lib/topics";
 import {
   createNote,
   deleteNote,
   updateNote,
+  bulkDeleteNotes,
+  deleteTopic,
   type NoteInput,
 } from "@/lib/actions/notes";
-import type { NoteDTO, SharedWithMeNoteDTO, TopicSummaryDTO } from "@/lib/types";
+import type {
+  GroupSummaryDTO,
+  NoteDTO,
+  SharedWithMeNoteDTO,
+  TopicSummaryDTO,
+} from "@/lib/types";
 
 type ModalState =
   | { type: "closed" }
@@ -24,7 +35,9 @@ type ModalState =
   | { type: "form"; noteId: string | null }
   | { type: "view-shared"; noteId: string }
   | { type: "import" }
-  | { type: "quiz" };
+  | { type: "quiz" }
+  | { type: "bulk-move" }
+  | { type: "bulk-share" };
 
 type SearchScope = "mine" | "everywhere";
 
@@ -32,6 +45,7 @@ interface BinderAppProps {
   notes: NoteDTO[];
   topics: TopicSummaryDTO[];
   sharedWithMe: SharedWithMeNoteDTO[];
+  groups: GroupSummaryDTO[];
   userName: string;
   userEmail: string;
   userImage: string | null;
@@ -66,6 +80,7 @@ export function BinderApp({
   notes,
   topics,
   sharedWithMe,
+  groups,
   userName,
   userEmail,
   userImage,
@@ -76,6 +91,13 @@ export function BinderApp({
   const [modalState, setModalState] = useState<ModalState>({ type: "closed" });
   const [actionError, setActionError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [isSelectMode, setIsSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const browsingTopic =
+    selection.type === "topic" && searchQuery.trim().length === 0
+      ? selection.topic
+      : null;
 
   const filteredNotes = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -108,7 +130,7 @@ export function BinderApp({
     selection.type === "all"
       ? "Every flashcard across every topic."
       : selection.type === "topic"
-        ? `Flashcards filed under ${selection.topic}.`
+        ? "Pick a folder to see its flashcards."
         : `Flashcards in ${selection.folder}.`;
 
   const viewingNote =
@@ -168,11 +190,87 @@ export function BinderApp({
     });
   }
 
+  function toggleSelectMode() {
+    setIsSelectMode((prev) => !prev);
+    setSelectedIds(new Set());
+  }
+
+  function toggleSelectId(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function handleBulkDelete() {
+    if (selectedIds.size === 0) return;
+    if (
+      !window.confirm(
+        `Delete ${selectedIds.size} flashcard${selectedIds.size === 1 ? "" : "s"}? This cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+    startTransition(async () => {
+      try {
+        await bulkDeleteNotes(Array.from(selectedIds));
+        setSelectedIds(new Set());
+        setIsSelectMode(false);
+      } catch (error) {
+        setActionError(getErrorMessage(error));
+      }
+    });
+  }
+
+  function handleDeleteTopic(topic: string) {
+    const count = topics.find((t) => t.name === topic)?.count ?? 0;
+    if (
+      !window.confirm(
+        `Delete the "${topic}" topic? This deletes all ${count} flashcard${count === 1 ? "" : "s"} in it, across every folder. This cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+    startTransition(async () => {
+      try {
+        await deleteTopic(topic);
+        setSelection({ type: "all" });
+      } catch (error) {
+        setActionError(getErrorMessage(error));
+      }
+    });
+  }
+
+  function handleDropNoteOnFolder(noteId: string, topic: string, folder: string) {
+    const source = notes.find((n) => n.id === noteId);
+    if (!source) return;
+    if (source.topic === topic && source.folder === folder) return;
+    startTransition(async () => {
+      try {
+        await updateNote(noteId, {
+          title: source.title,
+          topic,
+          folder,
+          focus: source.focus,
+          description: source.description,
+        });
+      } catch (error) {
+        setActionError(getErrorMessage(error));
+      }
+    });
+  }
+
   return (
     <div className="flex h-dvh flex-col overflow-hidden md:flex-row">
       <Sidebar
         selection={selection}
-        onSelect={setSelection}
+        onSelect={(next) => {
+          setSelection(next);
+          setIsSelectMode(false);
+          setSelectedIds(new Set());
+        }}
         topics={topics}
         allCount={notes.length}
         userName={userName}
@@ -181,15 +279,28 @@ export function BinderApp({
         onSignOut={() => {
           void signOutAction();
         }}
+        onDropNote={handleDropNoteOnFolder}
       />
 
       <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="shrink-0 px-4 pt-6 md:px-10 md:pt-8.5">
         <div className="mb-4 flex flex-wrap items-end justify-between gap-5">
           <div className="min-w-0">
-            <h2 className="m-0 mb-1 truncate font-serif text-[22px] text-ink">
-              {searchScope === "everywhere" ? "Search everywhere" : viewTitle}
-            </h2>
+            <div className="flex items-center gap-2.5">
+              <h2 className="m-0 mb-1 truncate font-serif text-[22px] text-ink">
+                {searchScope === "everywhere" ? "Search everywhere" : viewTitle}
+              </h2>
+              {searchScope === "mine" &&
+                (selection.type === "topic" || selection.type === "folder") && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteTopic(selection.topic)}
+                    className="mb-1 shrink-0 font-mono text-[10.5px] text-c-crit uppercase hover:underline"
+                  >
+                    Delete topic
+                  </button>
+                )}
+            </div>
             <p className="m-0 truncate text-[13.5px] text-ink-soft">
               {searchScope === "everywhere"
                 ? "Your flashcards and flashcards shared with you through groups."
@@ -218,6 +329,18 @@ export function BinderApp({
                 className="w-full min-h-[42px] rounded border border-line bg-card py-2.5 pr-3.5 pl-8 font-mono text-[13px] text-ink outline-none focus:border-ink sm:w-[200px]"
               />
             </div>
+            {searchScope === "mine" && (
+              <button
+                type="button"
+                onClick={toggleSelectMode}
+                className={
+                  "min-h-[42px] rounded border border-line px-3.5 py-2.5 text-[13.5px] font-semibold transition-opacity hover:opacity-88 " +
+                  (isSelectMode ? "bg-ink text-paper" : "text-ink")
+                }
+              >
+                {isSelectMode ? "Cancel" : "Select"}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setModalState({ type: "quiz" })}
@@ -242,31 +365,63 @@ export function BinderApp({
           </div>
         </div>
 
-        <div className="mb-6.5 flex gap-1">
-          <button
-            type="button"
-            onClick={() => setSearchScope("mine")}
-            className={
-              "min-h-[32px] rounded px-3 py-1 font-mono text-[11px] tracking-[0.04em] uppercase transition-colors " +
-              (searchScope === "mine"
-                ? "bg-ink text-paper"
-                : "border border-line text-ink-soft hover:bg-paper-grid")
-            }
-          >
-            My notes
-          </button>
-          <button
-            type="button"
-            onClick={() => setSearchScope("everywhere")}
-            className={
-              "min-h-[32px] rounded px-3 py-1 font-mono text-[11px] tracking-[0.04em] uppercase transition-colors " +
-              (searchScope === "everywhere"
-                ? "bg-ink text-paper"
-                : "border border-line text-ink-soft hover:bg-paper-grid")
-            }
-          >
-            Everywhere
-          </button>
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <div className="flex gap-1">
+            <button
+              type="button"
+              onClick={() => setSearchScope("mine")}
+              className={
+                "min-h-[32px] rounded px-3 py-1 font-mono text-[11px] tracking-[0.04em] uppercase transition-colors " +
+                (searchScope === "mine"
+                  ? "bg-ink text-paper"
+                  : "border border-line text-ink-soft hover:bg-paper-grid")
+              }
+            >
+              My notes
+            </button>
+            <button
+              type="button"
+              onClick={() => setSearchScope("everywhere")}
+              className={
+                "min-h-[32px] rounded px-3 py-1 font-mono text-[11px] tracking-[0.04em] uppercase transition-colors " +
+                (searchScope === "everywhere"
+                  ? "bg-ink text-paper"
+                  : "border border-line text-ink-soft hover:bg-paper-grid")
+              }
+            >
+              Everywhere
+            </button>
+          </div>
+
+          {isSelectMode && selectedIds.size > 0 && (
+            <div className="flex flex-wrap items-center gap-2 rounded border border-line bg-paper-grid px-3 py-1.5">
+              <span className="font-mono text-[11px] text-ink-soft">
+                {selectedIds.size} selected
+              </span>
+              <button
+                type="button"
+                onClick={() => setModalState({ type: "bulk-move" })}
+                className="rounded border border-line bg-card px-2.5 py-1 text-xs font-semibold text-ink hover:bg-paper"
+              >
+                Move
+              </button>
+              <button
+                type="button"
+                onClick={() => setModalState({ type: "bulk-share" })}
+                className="rounded border border-line bg-card px-2.5 py-1 text-xs font-semibold text-ink hover:bg-paper"
+              >
+                Share to group
+              </button>
+              <button
+                type="button"
+                onClick={handleBulkDelete}
+                disabled={isPending}
+                className="rounded border border-line bg-card px-2.5 py-1 text-xs font-semibold text-c-crit hover:bg-paper disabled:opacity-50"
+              >
+                Delete
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -276,11 +431,33 @@ export function BinderApp({
         )}
 
         {searchScope === "mine" ? (
-          <NoteGrid
-            notes={filteredNotes}
-            hasAnyNotes={notes.length > 0}
-            onSelectNote={(id) => setModalState({ type: "view", noteId: id })}
-          />
+          browsingTopic !== null ? (
+            <TileGrid
+              countLabel="cards"
+              items={
+                topics
+                  .find((t) => t.name === browsingTopic)
+                  ?.folders.map((f) => ({
+                    key: f.name,
+                    label: f.name,
+                    count: f.count,
+                    color: topicColor(browsingTopic),
+                  })) ?? []
+              }
+              onSelect={(folder) =>
+                setSelection({ type: "folder", topic: browsingTopic, folder })
+              }
+            />
+          ) : (
+            <NoteGrid
+              notes={filteredNotes}
+              hasAnyNotes={notes.length > 0}
+              onSelectNote={(id) => setModalState({ type: "view", noteId: id })}
+              isSelectMode={isSelectMode}
+              selectedIds={selectedIds}
+              onToggleSelect={toggleSelectId}
+            />
+          )
         ) : everywhereResults.length === 0 ? (
           <div className="py-[70px] text-center text-ink-soft">
             <h3 className="m-0 mb-2 font-serif text-[19px] text-ink">
@@ -297,6 +474,7 @@ export function BinderApp({
               item.kind === "own" ? (
                 <NoteCard
                   key={item.note.id}
+                  id={item.note.id}
                   note={item.note}
                   groupChips={item.note.sharedGroups}
                   onClick={() =>
@@ -306,6 +484,7 @@ export function BinderApp({
               ) : (
                 <NoteCard
                   key={item.note.id}
+                  id={item.note.id}
                   note={item.note}
                   author={{
                     name: item.note.authorName,
@@ -368,6 +547,32 @@ export function BinderApp({
           title="My Binder"
           cards={quizCards}
           onClose={closeModal}
+        />
+      )}
+
+      {modalState.type === "bulk-move" && (
+        <BulkMoveModal
+          noteIds={Array.from(selectedIds)}
+          topics={topics}
+          onClose={closeModal}
+          onMoved={() => {
+            setSelectedIds(new Set());
+            setIsSelectMode(false);
+            closeModal();
+          }}
+        />
+      )}
+
+      {modalState.type === "bulk-share" && (
+        <BulkShareModal
+          noteIds={Array.from(selectedIds)}
+          groups={groups}
+          onClose={closeModal}
+          onShared={() => {
+            setSelectedIds(new Set());
+            setIsSelectMode(false);
+            closeModal();
+          }}
         />
       )}
     </div>

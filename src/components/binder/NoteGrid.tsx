@@ -5,9 +5,21 @@ interface NoteGridProps {
   notes: NoteDTO[];
   hasAnyNotes: boolean;
   onSelectNote: (id: string) => void;
+  isSelectMode?: boolean;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (id: string) => void;
+  onDragStartNote?: (id: string) => void;
 }
 
-export function NoteGrid({ notes, hasAnyNotes, onSelectNote }: NoteGridProps) {
+export function NoteGrid({
+  notes,
+  hasAnyNotes,
+  onSelectNote,
+  isSelectMode,
+  selectedIds,
+  onToggleSelect,
+  onDragStartNote,
+}: NoteGridProps) {
   if (notes.length === 0) {
     const copy = hasAnyNotes
       ? {
@@ -34,9 +46,15 @@ export function NoteGrid({ notes, hasAnyNotes, onSelectNote }: NoteGridProps) {
       {notes.map((note) => (
         <NoteCard
           key={note.id}
+          id={note.id}
           note={note}
           groupChips={note.sharedGroups}
           onClick={() => onSelectNote(note.id)}
+          isSelectMode={isSelectMode}
+          isSelected={selectedIds?.has(note.id)}
+          onToggleSelect={() => onToggleSelect?.(note.id)}
+          isDraggable
+          onDragStart={onDragStartNote}
         />
       ))}
     </div>

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { BinderApp } from "@/components/binder/BinderApp";
 import { SignInScreen } from "@/components/SignInScreen";
 import type {
+  GroupSummaryDTO,
   NoteDTO,
   SharedWithMeNoteDTO,
   TopicSummaryDTO,
@@ -17,7 +18,7 @@ export default async function Home() {
 
   const userId = session.user.id;
 
-  const [me, notes, topics, sharedWithMeRows] = await Promise.all([
+  const [me, notes, topics, sharedWithMeRows, myMemberships] = await Promise.all([
     prisma.user.findUniqueOrThrow({ where: { id: userId } }),
     prisma.note.findMany({
       where: { ownerId: userId },
@@ -42,6 +43,11 @@ export default async function Home() {
         note: { include: { owner: true, folder: { include: { topic: true } } } },
         group: true,
       },
+    }),
+    prisma.groupMembership.findMany({
+      where: { userId },
+      include: { group: { include: { _count: { select: { memberships: true } } } } },
+      orderBy: { joinedAt: "desc" },
     }),
   ]);
 
@@ -88,11 +94,19 @@ export default async function Home() {
   }
   const sharedWithMe = Array.from(sharedWithMeByNoteId.values());
 
+  const groups: GroupSummaryDTO[] = myMemberships.map((m) => ({
+    id: m.group.id,
+    name: m.group.name,
+    role: m.role,
+    memberCount: m.group._count.memberships,
+  }));
+
   return (
     <BinderApp
       notes={noteDTOs}
       topics={topicDTOs}
       sharedWithMe={sharedWithMe}
+      groups={groups}
       userName={me.displayName}
       userEmail={me.email}
       userImage={me.avatarUrl}

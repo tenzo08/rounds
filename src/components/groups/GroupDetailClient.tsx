@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { GroupsSidebar } from "@/components/groups/GroupsSidebar";
 import { GroupSettingsModal } from "@/components/groups/GroupSettingsModal";
 import { NoteCard } from "@/components/binder/NoteCard";
+import { TileGrid } from "@/components/binder/TileGrid";
 import { GroupNoteViewModal } from "@/components/groups/GroupNoteViewModal";
 import { QuizModal, type QuizCard } from "@/components/binder/QuizModal";
 import { signOutAction } from "@/lib/actions/auth";
+import { topicColor } from "@/lib/topics";
 import type {
   GroupDetailDTO,
   GroupFeedNoteDTO,
@@ -23,6 +25,11 @@ interface GroupDetailClientProps {
   userEmail: string;
   userImage: string | null;
 }
+
+type GroupSelection =
+  | { type: "all" }
+  | { type: "topic"; topic: string }
+  | { type: "folder"; topic: string; folder: string };
 
 export function GroupDetailClient({
   group,
@@ -40,6 +47,7 @@ export function GroupDetailClient({
   );
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isQuizOpen, setIsQuizOpen] = useState(false);
+  const [selection, setSelection] = useState<GroupSelection>({ type: "all" });
 
   const viewingFeedNote =
     feedNotes.find((n) => n.id === viewingFeedNoteId) ?? null;
@@ -52,6 +60,35 @@ export function GroupDetailClient({
     topic: n.topic,
     folder: n.folder,
   }));
+
+  // Notes are shared in from many different owners' personal topic/folder
+  // structures — there's no shared Topic/Folder table to join against here,
+  // so the browsing tree is built straight from whatever topic/folder names
+  // are already attached to each shared note.
+  const topicTree = useMemo(() => {
+    const byTopic = new Map<string, Map<string, number>>();
+    for (const note of feedNotes) {
+      if (!byTopic.has(note.topic)) byTopic.set(note.topic, new Map());
+      const folders = byTopic.get(note.topic)!;
+      folders.set(note.folder, (folders.get(note.folder) ?? 0) + 1);
+    }
+    return Array.from(byTopic.entries())
+      .map(([topic, folders]) => ({
+        topic,
+        count: Array.from(folders.values()).reduce((a, b) => a + b, 0),
+        folders: Array.from(folders.entries())
+          .map(([folder, count]) => ({ folder, count }))
+          .sort((a, b) => a.folder.localeCompare(b.folder)),
+      }))
+      .sort((a, b) => a.topic.localeCompare(b.topic));
+  }, [feedNotes]);
+
+  const visibleNotes =
+    selection.type === "folder"
+      ? feedNotes.filter(
+          (n) => n.topic === selection.topic && n.folder === selection.folder,
+        )
+      : [];
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden md:flex-row">
@@ -68,7 +105,7 @@ export function GroupDetailClient({
 
       <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="shrink-0 px-4 pt-6 md:px-10 md:pt-8.5">
-        <div className="mb-6.5 flex flex-wrap items-start justify-between gap-5">
+        <div className="mb-3 flex flex-wrap items-start justify-between gap-5">
           <div className="min-w-0">
             <h2 className="m-0 mb-1 font-serif text-[22px] text-ink">
               {group.name}
@@ -98,6 +135,34 @@ export function GroupDetailClient({
             </button>
           </div>
         </div>
+
+        {selection.type !== "all" && (
+          <div className="mb-2 flex items-center gap-1.5 font-mono text-[11px] text-ink-soft">
+            <button
+              type="button"
+              onClick={() => setSelection({ type: "all" })}
+              className="hover:text-ink hover:underline"
+            >
+              All topics
+            </button>
+            {selection.type === "folder" && (
+              <>
+                <span>/</span>
+                <button
+                  type="button"
+                  onClick={() => setSelection({ type: "topic", topic: selection.topic })}
+                  className="hover:text-ink hover:underline"
+                >
+                  {selection.topic}
+                </button>
+              </>
+            )}
+            <span>/</span>
+            <span className="text-ink">
+              {selection.type === "topic" ? selection.topic : selection.folder}
+            </span>
+          </div>
+        )}
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-14 md:px-10">
@@ -105,11 +170,40 @@ export function GroupDetailClient({
           <p className="text-[13.5px] text-ink-soft">
             No notes shared into this group yet.
           </p>
+        ) : selection.type === "all" ? (
+          <TileGrid
+            countLabel="cards"
+            items={topicTree.map((t) => ({
+              key: t.topic,
+              label: t.topic,
+              count: t.count,
+              color: topicColor(t.topic),
+            }))}
+            onSelect={(topic) => setSelection({ type: "topic", topic })}
+          />
+        ) : selection.type === "topic" ? (
+          <TileGrid
+            countLabel="cards"
+            items={
+              topicTree
+                .find((t) => t.topic === selection.topic)
+                ?.folders.map((f) => ({
+                  key: f.folder,
+                  label: f.folder,
+                  count: f.count,
+                  color: topicColor(selection.topic),
+                })) ?? []
+            }
+            onSelect={(folder) =>
+              setSelection({ type: "folder", topic: selection.topic, folder })
+            }
+          />
         ) : (
           <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-[18px]">
-            {feedNotes.map((note) => (
+            {visibleNotes.map((note) => (
               <NoteCard
                 key={note.id}
+                id={note.id}
                 note={note}
                 author={{ name: note.authorName, image: note.authorImage }}
                 onClick={() => setViewingFeedNoteId(note.id)}

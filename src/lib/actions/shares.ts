@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import type { ShareableGroupDTO } from "@/lib/types";
@@ -74,4 +75,39 @@ export async function setNoteShare(
 
   revalidatePath("/");
   revalidatePath(`/groups/${groupId}`);
+}
+
+export async function bulkShareNotes(
+  noteIds: string[],
+  groupId: string,
+): Promise<{ shared: number }> {
+  const userId = await requireUserId();
+  const validIds = z.array(z.string()).min(1).max(200).parse(noteIds);
+
+  const membership = await prisma.groupMembership.findUnique({
+    where: { groupId_userId: { groupId, userId } },
+  });
+  if (!membership) {
+    throw new Error("You are not a member of that group");
+  }
+
+  const owned = await prisma.note.findMany({
+    where: { id: { in: validIds }, ownerId: userId },
+    select: { id: true },
+  });
+  if (owned.length === 0) {
+    return { shared: 0 };
+  }
+
+  for (const note of owned) {
+    await prisma.noteShare.upsert({
+      where: { noteId_groupId: { noteId: note.id, groupId } },
+      update: {},
+      create: { noteId: note.id, groupId },
+    });
+  }
+
+  revalidatePath("/");
+  revalidatePath(`/groups/${groupId}`);
+  return { shared: owned.length };
 }
