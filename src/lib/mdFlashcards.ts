@@ -59,16 +59,12 @@ export function normalizeFocus(focus: string): string {
   return focus.trim().toLowerCase();
 }
 
-export const FLASHCARD_IMPORT_PROMPT = `You are helping a nursing student turn raw lecture/study notes into flashcard-style study material.
+export const FLASHCARD_IMPORT_PROMPT = `Please create a markdown flashcard file based on the PDF I've attached to this conversation.
 
-I will paste my raw notes below. Convert them into flashcards using EXACTLY this Markdown format, and output ONLY the markdown — no commentary before or after it:
+Convert the material into flashcards using EXACTLY this Markdown format, and output ONLY the markdown — no commentary before or after it:
 
 ## <short, specific card title>
 Focus: <the one key word or short phrase to memorize>
-Description: <a concise 2-5 sentence explanation of what the student needs to remember about it>
+Description: <a concise 2-5 sentence explanation of what a nursing student needs to remember about it>
 
-Repeat that block for every distinct concept, term, drug, lab value, or fact worth memorizing on its own. Break a big topic into MANY small, focused cards rather than one giant note — each card should stand alone as a proper flashcard, front (focus) and back (description).
-
-Here are my notes:
-
-<paste your notes here>`;
+Repeat that block for every distinct concept, term, drug, lab value, or fact in the PDF worth memorizing on its own. Break a big topic into MANY small, focused cards rather than one giant note — each card should stand alone as a proper flashcard, front (focus) and back (description).`;

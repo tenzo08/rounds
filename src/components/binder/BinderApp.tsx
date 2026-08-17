@@ -169,7 +169,7 @@ export function BinderApp({
   }
 
   return (
-    <div className="flex min-h-screen flex-col md:flex-row">
+    <div className="flex h-dvh flex-col overflow-hidden md:flex-row">
       <Sidebar
         selection={selection}
         onSelect={setSelection}
@@ -183,7 +183,8 @@ export function BinderApp({
         }}
       />
 
-      <main className="flex-1 px-4 pt-6 pb-14 md:px-10 md:pt-8.5">
+      <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="shrink-0 px-4 pt-6 md:px-10 md:pt-8.5">
         <div className="mb-4 flex flex-wrap items-end justify-between gap-5">
           <div className="min-w-0">
             <h2 className="m-0 mb-1 truncate font-serif text-[22px] text-ink">
@@ -267,7 +268,9 @@ export function BinderApp({
             Everywhere
           </button>
         </div>
+      </div>
 
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-14 md:px-10">
         {actionError && (
           <p className="mb-4 text-sm text-c-crit">{actionError}</p>
         )}
@@ -319,6 +322,7 @@ export function BinderApp({
             )}
           </div>
         )}
+      </div>
       </main>
 
       {viewingNote && (

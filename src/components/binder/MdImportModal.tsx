@@ -145,11 +145,15 @@ export function MdImportModal({
       </h3>
 
       <div className="mt-3.5 rounded border border-line bg-paper-grid p-3.5">
-        <p className="m-0 mb-2 text-[12.8px] leading-[1.55] text-ink-soft">
-          1. Copy the prompt below. 2. Paste it into Claude, ChatGPT, or
-          another LLM, along with your raw lecture notes. 3. Save what it
-          gives back as a <code>.md</code> file and upload it here.
-        </p>
+        <ol className="m-0 mb-3 list-decimal space-y-1.5 pl-4 text-[12.8px] leading-[1.5] text-ink-soft">
+          <li>Copy the prompt below.</li>
+          <li>Open Claude, ChatGPT, or another LLM and attach your lecture PDF to the conversation.</li>
+          <li>Paste the prompt as your message.</li>
+          <li>
+            Save its reply as a <code>.md</code> file.
+          </li>
+          <li>Upload that file below.</li>
+        </ol>
         <button
           type="button"
           onClick={handleCopyPrompt}

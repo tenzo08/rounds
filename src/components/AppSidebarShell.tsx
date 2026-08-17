@@ -189,7 +189,7 @@ export function AppSidebarShell({
       )}
 
       {/* Desktop sidebar */}
-      <aside className="hidden bg-binder py-7 text-binder-text md:flex md:h-screen md:w-[220px] md:shrink-0 md:flex-col">
+      <aside className="hidden bg-binder py-7 text-binder-text md:sticky md:top-0 md:flex md:h-screen md:w-[220px] md:shrink-0 md:flex-col">
         {brandBlock}
         {navLinks}
         <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>

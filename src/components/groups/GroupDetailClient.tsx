@@ -54,7 +54,7 @@ export function GroupDetailClient({
   }));
 
   return (
-    <div className="flex min-h-screen flex-col md:flex-row">
+    <div className="flex h-dvh flex-col overflow-hidden md:flex-row">
       <GroupsSidebar
         groups={groups}
         activeGroupId={group.id}
@@ -66,7 +66,8 @@ export function GroupDetailClient({
         }}
       />
 
-      <main className="flex-1 px-4 pt-6 pb-14 md:px-10 md:pt-8.5">
+      <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="shrink-0 px-4 pt-6 md:px-10 md:pt-8.5">
         <div className="mb-6.5 flex flex-wrap items-start justify-between gap-5">
           <div className="min-w-0">
             <h2 className="m-0 mb-1 font-serif text-[22px] text-ink">
@@ -97,7 +98,9 @@ export function GroupDetailClient({
             </button>
           </div>
         </div>
+      </div>
 
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-14 md:px-10">
         {feedNotes.length === 0 ? (
           <p className="text-[13.5px] text-ink-soft">
             No notes shared into this group yet.
@@ -114,6 +117,7 @@ export function GroupDetailClient({
             ))}
           </div>
         )}
+      </div>
       </main>
 
       {viewingFeedNote && (

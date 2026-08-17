@@ -165,7 +165,7 @@ export function GroupSettingsModal({
             </button>
           </div>
         ) : (
-          <h3 className="m-0 font-serif text-lg text-ink">
+          <h3 className="m-0 min-w-0 font-serif text-lg text-ink">
             {group.name} settings
             {isAdmin && (
               <button
