@@ -32,6 +32,8 @@ interface QuizModalProps {
   onClose: () => void;
 }
 
+type QuizMode = "type" | "flip";
+
 function folderKey(topic: string, folder: string): string {
   return `${topic} ${folder}`;
 }
@@ -51,7 +53,7 @@ function normalize(value: string): string {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
-type Step = "setup" | "playing" | "done" | "review";
+type Step = "mode" | "setup" | "playing" | "done" | "review";
 
 export function QuizModal({ title, cards, onClose }: QuizModalProps) {
   const groups = useMemo<QuizTopicGroup[]>(() => {
@@ -77,12 +79,14 @@ export function QuizModal({ title, cards, onClose }: QuizModalProps) {
     [groups],
   );
 
+  const [mode, setMode] = useState<QuizMode>("type");
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [step, setStep] = useState<Step>("setup");
+  const [step, setStep] = useState<Step>("mode");
   const [deck, setDeck] = useState<QuizCard[]>([]);
   const [index, setIndex] = useState(0);
   const [answer, setAnswer] = useState("");
   const [checked, setChecked] = useState(false);
+  const [revealed, setRevealed] = useState(false);
   const [lastCorrect, setLastCorrect] = useState(false);
   const [results, setResults] = useState<QuizResult[]>([]);
   const answerRef = useRef<HTMLInputElement>(null);
@@ -134,6 +138,7 @@ export function QuizModal({ title, cards, onClose }: QuizModalProps) {
     setIndex(0);
     setAnswer("");
     setChecked(false);
+    setRevealed(false);
     setResults([]);
     setStep("playing");
   }
@@ -146,15 +151,26 @@ export function QuizModal({ title, cards, onClose }: QuizModalProps) {
     setChecked(true);
   }
 
-  function handleNext() {
+  function handleFlipGrade(correct: boolean) {
+    if (!current) return;
+    setResults((prev) => [...prev, { card: current, userAnswer: "", correct }]);
+    advanceCard();
+  }
+
+  function advanceCard() {
     if (index + 1 >= deck.length) {
       setStep("done");
     } else {
       setIndex((i) => i + 1);
       setAnswer("");
       setChecked(false);
+      setRevealed(false);
       requestAnimationFrame(() => answerRef.current?.focus());
     }
+  }
+
+  function handleNext() {
+    advanceCard();
   }
 
   const current = deck[index];
@@ -164,14 +180,66 @@ export function QuizModal({ title, cards, onClose }: QuizModalProps) {
 
   return (
     <ModalShell accentColor={color} onClose={onClose}>
+      {step === "mode" && (
+        <>
+          <h3 className="m-0 pr-6 font-serif text-[19px] text-ink">
+            Quiz: {title}
+          </h3>
+          <p className="mt-1 mb-4 text-[13px] text-ink-soft">
+            How do you want to be quizzed?
+          </p>
+          <div className="flex flex-col gap-2.5">
+            <button
+              type="button"
+              onClick={() => {
+                setMode("type");
+                setStep("setup");
+              }}
+              className="rounded border border-line bg-card px-4 py-3 text-left transition-colors hover:border-ink"
+            >
+              <p className="m-0 font-serif text-[15px] text-ink">Type the answer</p>
+              <p className="m-0 mt-0.5 text-[12.5px] text-ink-soft">
+                You&apos;ll see the description and type the term it describes —
+                graded automatically.
+              </p>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMode("flip");
+                setStep("setup");
+              }}
+              className="rounded border border-line bg-card px-4 py-3 text-left transition-colors hover:border-ink"
+            >
+              <p className="m-0 font-serif text-[15px] text-ink">Flip the card</p>
+              <p className="m-0 mt-0.5 text-[12.5px] text-ink-soft">
+                You&apos;ll see the description, guess the term in your head, then
+                tap the card to reveal it and grade yourself.
+              </p>
+            </button>
+          </div>
+          <div className="mt-[22px] flex justify-end">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded border border-line px-4 py-2.5 text-[13.5px] font-semibold text-ink transition-opacity hover:opacity-88"
+            >
+              Cancel
+            </button>
+          </div>
+        </>
+      )}
+
       {step === "setup" && (
         <>
           <h3 className="m-0 pr-6 font-serif text-[19px] text-ink">
             Quiz: {title}
           </h3>
           <p className="mt-1 mb-4 text-[13px] text-ink-soft">
-            You&apos;ll see the description and type the term it&apos;s
-            describing. Pick topics or folders to include, or select all.
+            {mode === "type"
+              ? "You'll see the description and type the term it's describing."
+              : "You'll see the description, then tap the card to reveal the term."}{" "}
+            Pick topics or folders to include, or select all.
           </p>
           {groups.length === 0 ? (
             <p className="text-[13.5px] text-ink-soft">
@@ -257,10 +325,10 @@ export function QuizModal({ title, cards, onClose }: QuizModalProps) {
           <div className="mt-[22px] flex justify-end gap-2">
             <button
               type="button"
-              onClick={onClose}
+              onClick={() => setStep("mode")}
               className="rounded border border-line px-4 py-2.5 text-[13.5px] font-semibold text-ink transition-opacity hover:opacity-88"
             >
-              Cancel
+              Back
             </button>
             <button
               type="button"
@@ -274,7 +342,7 @@ export function QuizModal({ title, cards, onClose }: QuizModalProps) {
         </>
       )}
 
-      {step === "playing" && current && (
+      {step === "playing" && current && mode === "type" && (
         <>
           <div className="mb-3 flex items-center justify-between font-mono text-[11px] text-ink-soft">
             <span>
@@ -361,6 +429,83 @@ export function QuizModal({ title, cards, onClose }: QuizModalProps) {
         </>
       )}
 
+      {step === "playing" && current && mode === "flip" && (
+        <>
+          <div className="mb-3 flex items-center justify-between font-mono text-[11px] text-ink-soft">
+            <span>
+              Card {index + 1} / {deck.length}
+            </span>
+            <span>
+              {current.topic} / {current.folder}
+            </span>
+          </div>
+
+          <div
+            onClick={() => setRevealed(true)}
+            className="flex min-h-[180px] cursor-pointer flex-col justify-center rounded-[3px] px-3.5 py-4 text-sm leading-[1.6] text-ink"
+            style={{ background: `${color}1a` }}
+          >
+            {!revealed ? (
+              <>
+                {renderMarkdown(
+                  redactFocusFromText(current.description, current.focus),
+                )}
+                <p className="m-0 mt-4 text-center font-mono text-[11px] text-ink-soft">
+                  Guess it in your head, then tap to reveal
+                </p>
+              </>
+            ) : (
+              <div className="text-center">
+                <p className="m-0 mb-1 font-mono text-[10.5px] tracking-[0.08em] text-ink-soft uppercase">
+                  {current.title}
+                </p>
+                <p className="m-0 font-serif text-[24px] leading-[1.3] text-ink">
+                  {current.focus}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {revealed && (
+            <div className="mt-3.5 text-sm leading-[1.65] text-ink">
+              {renderMarkdown(current.description)}
+            </div>
+          )}
+
+          <div className="mt-[22px] flex flex-wrap items-center justify-between gap-2.5">
+            <span className="font-mono text-[11px] text-ink-soft">
+              Score: {score} / {results.length}
+            </span>
+            {!revealed ? (
+              <button
+                type="button"
+                onClick={() => setRevealed(true)}
+                className="rounded bg-ink px-4 py-2.5 text-[13.5px] font-semibold text-paper transition-opacity hover:opacity-88"
+              >
+                Reveal
+              </button>
+            ) : (
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleFlipGrade(false)}
+                  className="rounded border border-line px-4 py-2.5 text-[13.5px] font-semibold text-c-crit transition-opacity hover:opacity-88"
+                >
+                  Missed it
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleFlipGrade(true)}
+                  className="rounded bg-ink px-4 py-2.5 text-[13.5px] font-semibold text-paper transition-opacity hover:opacity-88"
+                >
+                  Got it
+                </button>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
       {step === "done" && (
         <>
           <h3 className="m-0 pr-6 font-serif text-[19px] text-ink">
@@ -392,7 +537,7 @@ export function QuizModal({ title, cards, onClose }: QuizModalProps) {
             </button>
             <button
               type="button"
-              onClick={() => setStep("setup")}
+              onClick={() => setStep("mode")}
               className="rounded bg-ink px-4 py-2.5 text-[13.5px] font-semibold text-paper transition-opacity hover:opacity-88"
             >
               Quiz again
@@ -420,7 +565,7 @@ export function QuizModal({ title, cards, onClose }: QuizModalProps) {
                     {r.correct ? "Correct" : "Missed"}
                   </span>
                 </div>
-                {!r.correct && (
+                {!r.correct && r.userAnswer && (
                   <p className="m-0 mt-0.5 text-[12px] text-ink-soft">
                     You typed: &ldquo;{r.userAnswer}&rdquo;
                   </p>

@@ -2,6 +2,7 @@
 # CLAUDE.md is the Claude Code project brief; docs/ holds the spec, data
 # model, and auth constraint. README.md is intentionally NOT ignored below.
 CLAUDE.md
+AGENTS.md
 docs/
 
 # --- Common environment / dependency noise (adjust once the stack is chosen) ---
