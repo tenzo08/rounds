@@ -239,6 +239,7 @@ export function GroupDetailClient({
           currentUserId={currentUserId}
           onClose={() => setIsSettingsOpen(false)}
           onGroupDeleted={() => router.push("/groups")}
+          onLeft={() => router.push("/groups")}
         />
       )}
     </div>

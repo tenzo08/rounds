@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { notifyGroupChanged } from "@/lib/server/notifyGroup";
 import type { ShareableGroupDTO } from "@/lib/types";
 
 async function requireUserId(): Promise<string> {
@@ -75,6 +76,7 @@ export async function setNoteShare(
 
   revalidatePath("/");
   revalidatePath(`/groups/${groupId}`);
+  await notifyGroupChanged(groupId);
 }
 
 export async function bulkShareNotes(
@@ -109,5 +111,6 @@ export async function bulkShareNotes(
 
   revalidatePath("/");
   revalidatePath(`/groups/${groupId}`);
+  await notifyGroupChanged(groupId);
   return { shared: owned.length };
 }

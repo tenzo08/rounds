@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { notifyGroupChanged } from "@/lib/server/notifyGroup";
 import type { GroupRole } from "@/generated/prisma/client";
 import type { UserSearchResultDTO } from "@/lib/types";
 
@@ -75,6 +76,7 @@ export async function renameGroup(
 
   revalidatePath("/groups");
   revalidatePath(`/groups/${groupId}`);
+  await notifyGroupChanged(groupId);
 }
 
 export async function deleteGroup(groupId: string): Promise<void> {
@@ -84,6 +86,7 @@ export async function deleteGroup(groupId: string): Promise<void> {
   await prisma.group.delete({ where: { id: groupId } });
 
   revalidatePath("/groups");
+  await notifyGroupChanged(groupId);
 }
 
 export async function addMember(
@@ -105,6 +108,7 @@ export async function addMember(
   });
 
   revalidatePath(`/groups/${groupId}`);
+  await notifyGroupChanged(groupId);
 }
 
 export async function removeMember(
@@ -142,6 +146,43 @@ export async function removeMember(
 
   revalidatePath(`/groups/${groupId}`);
   revalidatePath("/");
+  await notifyGroupChanged(groupId);
+}
+
+// A member removing themselves — unlike removeMember, this doesn't require
+// admin rights, only that you're actually a member. Same "don't strand a
+// group with zero admins" guard, and the same note-unsharing cleanup.
+export async function leaveGroup(groupId: string): Promise<void> {
+  const userId = await requireUserId();
+
+  const membership = await prisma.groupMembership.findUnique({
+    where: { groupId_userId: { groupId, userId } },
+  });
+  if (!membership) {
+    throw new Error("You are not a member of this group");
+  }
+  if (membership.role === "admin") {
+    const remaining = await countOtherAdmins(groupId, userId);
+    if (remaining === 0) {
+      throw new Error(
+        "You're the only admin — promote someone else first, or delete the group instead.",
+      );
+    }
+  }
+
+  await prisma.$transaction([
+    prisma.noteShare.deleteMany({
+      where: { groupId, note: { ownerId: userId } },
+    }),
+    prisma.groupMembership.delete({
+      where: { groupId_userId: { groupId, userId } },
+    }),
+  ]);
+
+  revalidatePath(`/groups/${groupId}`);
+  revalidatePath("/groups");
+  revalidatePath("/");
+  await notifyGroupChanged(groupId);
 }
 
 export async function setMemberRole(
@@ -171,6 +212,7 @@ export async function setMemberRole(
   });
 
   revalidatePath(`/groups/${groupId}`);
+  await notifyGroupChanged(groupId);
 }
 
 export async function searchUsersForGroup(

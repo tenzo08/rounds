@@ -4,7 +4,12 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { resolveFolderId, cleanupIfEmpty } from "@/lib/server/notesShared";
+import {
+  resolveFolderId,
+  cleanupIfEmpty,
+  findAffectedGroupIds,
+  notifyGroups,
+} from "@/lib/server/notesShared";
 
 const noteInputSchema = z.object({
   title: z.string().trim().min(1, "Title is required").max(200),
@@ -58,6 +63,7 @@ export async function updateNote(
   }
 
   const folderId = await resolveFolderId(userId, data.topic, data.folder);
+  const affectedGroupIds = await findAffectedGroupIds([noteId]);
 
   await prisma.note.update({
     where: { id: noteId },
@@ -74,6 +80,7 @@ export async function updateNote(
   }
 
   revalidatePath("/");
+  await notifyGroups(affectedGroupIds);
 }
 
 export async function deleteNote(noteId: string): Promise<void> {
@@ -89,10 +96,13 @@ export async function deleteNote(noteId: string): Promise<void> {
     );
   }
 
+  const affectedGroupIds = await findAffectedGroupIds([noteId]);
+
   await prisma.note.delete({ where: { id: noteId } });
   await cleanupIfEmpty(existing.folderId);
 
   revalidatePath("/");
+  await notifyGroups(affectedGroupIds);
 }
 
 const bulkMoveSchema = z.object({
@@ -119,6 +129,7 @@ export async function bulkMoveNotes(input: {
     return { moved: 0 };
   }
 
+  const affectedGroupIds = await findAffectedGroupIds(owned.map((n) => n.id));
   const folderId = await resolveFolderId(userId, data.topic, data.folder);
   await prisma.note.updateMany({
     where: { id: { in: owned.map((n) => n.id) } },
@@ -133,6 +144,7 @@ export async function bulkMoveNotes(input: {
   }
 
   revalidatePath("/");
+  await notifyGroups(affectedGroupIds);
   return { moved: owned.length };
 }
 
@@ -150,6 +162,7 @@ export async function bulkDeleteNotes(
     return { deleted: 0 };
   }
 
+  const affectedGroupIds = await findAffectedGroupIds(owned.map((n) => n.id));
   await prisma.note.deleteMany({ where: { id: { in: owned.map((n) => n.id) } } });
 
   const folderIds = [...new Set(owned.map((n) => n.folderId))];
@@ -158,6 +171,7 @@ export async function bulkDeleteNotes(
   }
 
   revalidatePath("/");
+  await notifyGroups(affectedGroupIds);
   return { deleted: owned.length };
 }
 
@@ -170,6 +184,14 @@ export async function deleteTopic(topicName: string): Promise<void> {
   // removes the notes inside it too, unlike the automatic empty-folder/
   // topic cleanup elsewhere, which only ever removes already-empty
   // containers.
+  const noteIds = (
+    await prisma.note.findMany({
+      where: { ownerId: userId, folder: { topic: { name: validName } } },
+      select: { id: true },
+    })
+  ).map((n) => n.id);
+  const affectedGroupIds = await findAffectedGroupIds(noteIds);
+
   const result = await prisma.topic.deleteMany({
     where: { ownerId: userId, name: validName },
   });
@@ -178,4 +200,5 @@ export async function deleteTopic(topicName: string): Promise<void> {
   }
 
   revalidatePath("/");
+  await notifyGroups(affectedGroupIds);
 }

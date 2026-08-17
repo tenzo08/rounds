@@ -7,6 +7,7 @@ import {
   removeMember,
   renameGroup,
   deleteGroup,
+  leaveGroup,
   setMemberRole,
   searchUsersForGroup,
 } from "@/lib/actions/groups";
@@ -17,6 +18,7 @@ interface GroupSettingsModalProps {
   currentUserId: string;
   onClose: () => void;
   onGroupDeleted: () => void;
+  onLeft: () => void;
 }
 
 function getErrorMessage(error: unknown): string {
@@ -29,6 +31,7 @@ export function GroupSettingsModal({
   currentUserId,
   onClose,
   onGroupDeleted,
+  onLeft,
 }: GroupSettingsModalProps) {
   const isAdmin = group.currentUserRole === "admin";
 
@@ -89,6 +92,20 @@ export function GroupSettingsModal({
       try {
         await deleteGroup(group.id);
         onGroupDeleted();
+      } catch (err) {
+        setError(getErrorMessage(err));
+      }
+    });
+  }
+
+  function handleLeaveGroup() {
+    if (!window.confirm(`Leave "${group.name}"? You can rejoin only if someone adds you back.`)) {
+      return;
+    }
+    startTransition(async () => {
+      try {
+        await leaveGroup(group.id);
+        onLeft();
       } catch (err) {
         setError(getErrorMessage(err));
       }
@@ -178,16 +195,26 @@ export function GroupSettingsModal({
             )}
           </h3>
         )}
-        {isAdmin && (
+        <div className="flex shrink-0 gap-2">
           <button
             type="button"
-            onClick={handleDeleteGroup}
+            onClick={handleLeaveGroup}
             disabled={isPending}
-            className="min-h-[36px] shrink-0 rounded bg-c-crit px-3 text-xs font-semibold text-white transition-opacity hover:opacity-88 disabled:opacity-50"
+            className="min-h-[36px] rounded border border-c-crit/40 px-3 text-xs font-semibold text-c-crit transition-colors hover:border-c-crit hover:bg-c-crit/5 disabled:opacity-50"
           >
-            Delete group
+            Leave group
           </button>
-        )}
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={handleDeleteGroup}
+              disabled={isPending}
+              className="min-h-[36px] rounded bg-c-crit px-3 text-xs font-semibold text-white transition-opacity hover:opacity-88 disabled:opacity-50"
+            >
+              Delete group
+            </button>
+          )}
+        </div>
       </div>
 
       <p className="mt-1 text-[13px] text-ink-soft">
