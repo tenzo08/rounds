@@ -168,7 +168,16 @@ export function AppSidebarShell({
             </button>
             {footer}
             {navLinks}
-            <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+            {/* Tapping any actual selection inside (a topic, folder, group)
+                bubbles up and closes the drawer; the sidebar's own expand/
+                collapse chevron already stops propagation, so that alone
+                doesn't dismiss it. */}
+            <div
+              onClick={closeDrawer}
+              className="min-h-0 flex-1 overflow-y-auto"
+            >
+              {children}
+            </div>
           </div>
         </div>
       )}

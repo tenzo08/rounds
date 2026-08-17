@@ -127,11 +127,21 @@ export async function removeMember(
     }
   }
 
-  await prisma.groupMembership.delete({
-    where: { groupId_userId: { groupId, userId: targetUserId } },
-  });
+  // Leaving/being removed from a group should also pull the person's own
+  // notes out of it — otherwise their flashcards would keep showing up in
+  // the group's shared feed for members who can no longer see them coming
+  // from that person at all.
+  await prisma.$transaction([
+    prisma.noteShare.deleteMany({
+      where: { groupId, note: { ownerId: targetUserId } },
+    }),
+    prisma.groupMembership.delete({
+      where: { groupId_userId: { groupId, userId: targetUserId } },
+    }),
+  ]);
 
   revalidatePath(`/groups/${groupId}`);
+  revalidatePath("/");
 }
 
 export async function setMemberRole(

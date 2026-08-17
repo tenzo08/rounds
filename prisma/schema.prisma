@@ -27,6 +27,7 @@ model User {
   topics           Topic[]
   createdGroups    Group[]           @relation("GroupCreator")
   groupMemberships GroupMembership[]
+  messages         Message[]
 
   @@map("users")
 }
@@ -85,6 +86,7 @@ model Group {
 
   memberships GroupMembership[]
   noteShares  NoteShare[]
+  messages    Message[]
 
   @@map("groups")
 }
@@ -112,4 +114,17 @@ model NoteShare {
 
   @@unique([noteId, groupId])
   @@map("note_shares")
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  groupId   String   @map("group_id")
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  senderId  String   @map("sender_id")
+  sender    User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  body      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([groupId, createdAt])
+  @@map("messages")
 }

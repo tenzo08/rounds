@@ -8,6 +8,8 @@ import { NoteCard } from "@/components/binder/NoteCard";
 import { TileGrid } from "@/components/binder/TileGrid";
 import { GroupNoteViewModal } from "@/components/groups/GroupNoteViewModal";
 import { QuizModal, type QuizCard } from "@/components/binder/QuizModal";
+import { GroupChatModal } from "@/components/groups/GroupChatModal";
+import { GroupAutoRefresh } from "@/components/groups/GroupAutoRefresh";
 import { IdleLogout } from "@/components/IdleLogout";
 import { signOutAction } from "@/lib/actions/auth";
 import { topicColor } from "@/lib/topics";
@@ -48,6 +50,7 @@ export function GroupDetailClient({
   );
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isQuizOpen, setIsQuizOpen] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
   const [selection, setSelection] = useState<GroupSelection>({ type: "all" });
 
   const viewingFeedNote =
@@ -94,6 +97,7 @@ export function GroupDetailClient({
   return (
     <div className="flex h-dvh flex-col overflow-hidden md:flex-row">
       <IdleLogout />
+      <GroupAutoRefresh groupId={group.id} />
       <GroupsSidebar
         groups={groups}
         activeGroupId={group.id}
@@ -121,6 +125,13 @@ export function GroupDetailClient({
             </p>
           </div>
           <div className="flex shrink-0 gap-1.5 sm:gap-2">
+            <button
+              type="button"
+              onClick={() => setIsChatOpen(true)}
+              className="min-h-[34px] rounded border border-line px-2.5 py-1.5 text-[12px] font-semibold text-ink transition-opacity hover:opacity-88 sm:min-h-[44px] sm:px-4 sm:py-2.5 sm:text-[13.5px]"
+            >
+              Chat
+            </button>
             <button
               type="button"
               onClick={() => setIsQuizOpen(true)}
@@ -220,6 +231,15 @@ export function GroupDetailClient({
         <GroupNoteViewModal
           note={viewingFeedNote}
           onClose={() => setViewingFeedNoteId(null)}
+        />
+      )}
+
+      {isChatOpen && (
+        <GroupChatModal
+          groupId={group.id}
+          currentUserId={currentUserId}
+          members={group.members}
+          onClose={() => setIsChatOpen(false)}
         />
       )}
 
