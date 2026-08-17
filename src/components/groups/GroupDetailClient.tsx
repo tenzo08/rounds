@@ -124,14 +124,14 @@ export function GroupDetailClient({
             <button
               type="button"
               onClick={() => setIsQuizOpen(true)}
-              className="rounded border border-line px-4 py-2.5 text-[13.5px] font-semibold text-ink transition-opacity hover:opacity-88"
+              className="min-h-[44px] rounded border border-line px-4 py-2.5 text-[13.5px] font-semibold text-ink transition-opacity hover:opacity-88"
             >
               Quiz
             </button>
             <button
               type="button"
               onClick={() => setIsSettingsOpen(true)}
-              className="rounded border border-line px-4 py-2.5 text-[13.5px] font-semibold text-ink transition-opacity hover:opacity-88"
+              className="min-h-[44px] rounded border border-line px-4 py-2.5 text-[13.5px] font-semibold text-ink transition-opacity hover:opacity-88"
             >
               Settings
             </button>

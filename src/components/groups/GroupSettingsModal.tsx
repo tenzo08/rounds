@@ -139,7 +139,7 @@ export function GroupSettingsModal({
 
   return (
     <ModalShell accentColor="#1E2823" onClose={onClose}>
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         {isEditingName ? (
           <div className="flex items-center gap-2">
             <input
@@ -183,7 +183,7 @@ export function GroupSettingsModal({
             type="button"
             onClick={handleDeleteGroup}
             disabled={isPending}
-            className="shrink-0 rounded bg-c-crit px-3 py-1.5 text-xs font-semibold text-white transition-opacity hover:opacity-88 disabled:opacity-50"
+            className="min-h-[36px] shrink-0 rounded bg-c-crit px-3 text-xs font-semibold text-white transition-opacity hover:opacity-88 disabled:opacity-50"
           >
             Delete group
           </button>
@@ -244,7 +244,7 @@ export function GroupSettingsModal({
         {group.members.map((m) => (
           <li
             key={m.userId}
-            className="flex items-center justify-between gap-3 px-4 py-3"
+            className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
           >
             <div className="flex min-w-0 items-center gap-3">
               {m.image ? (
@@ -273,7 +273,7 @@ export function GroupSettingsModal({
                     type="button"
                     onClick={() => handleToggleRole(m.userId, m.role)}
                     disabled={isPending}
-                    className="rounded border border-line px-2.5 py-1 text-xs font-medium text-ink hover:bg-paper-grid disabled:opacity-50"
+                    className="min-h-[36px] rounded border border-line px-2.5 text-xs font-medium text-ink hover:bg-paper-grid disabled:opacity-50"
                   >
                     {m.role === "admin" ? "Demote" : "Promote"}
                   </button>
@@ -281,7 +281,7 @@ export function GroupSettingsModal({
                     type="button"
                     onClick={() => handleRemoveMember(m.userId)}
                     disabled={isPending}
-                    className="rounded border border-line px-2.5 py-1 text-xs font-medium text-c-crit hover:bg-paper-grid disabled:opacity-50"
+                    className="min-h-[36px] rounded border border-line px-2.5 text-xs font-medium text-c-crit hover:bg-paper-grid disabled:opacity-50"
                   >
                     Remove
                   </button>

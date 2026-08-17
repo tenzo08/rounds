@@ -362,38 +362,37 @@ export function BinderApp({
                 )}
               </div>
             )}
-            <div className="flex items-center gap-2.5">
-              <h2 className="m-0 mb-1 truncate font-serif text-[22px] text-ink">
-                {searchScope === "everywhere" ? "Search everywhere" : viewTitle}
-              </h2>
-              {searchScope === "mine" && (
-                <button
-                  type="button"
-                  onClick={handleOpenScopeShare}
-                  className="mb-1 shrink-0 font-mono text-[10.5px] text-ink-soft uppercase hover:text-ink hover:underline"
-                >
-                  {scopeShareLabel}
-                </button>
-              )}
-              {searchScope === "mine" &&
-                (selection.type === "topic" || selection.type === "folder") && (
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteTopic(selection.topic)}
-                    className="mb-1 shrink-0 font-mono text-[10.5px] text-c-crit uppercase hover:underline"
-                  >
-                    Delete topic
-                  </button>
-                )}
-            </div>
-            <p className="m-0 truncate text-[13.5px] text-ink-soft">
+            <h2 className="m-0 mb-1 truncate font-serif text-[22px] text-ink">
+              {searchScope === "everywhere" ? "Search everywhere" : viewTitle}
+            </h2>
+            <p className="m-0 mb-2 truncate text-[13.5px] text-ink-soft">
               {searchScope === "everywhere"
                 ? "Your flashcards and flashcards shared with you through groups."
                 : viewSub}
             </p>
+            {searchScope === "mine" && (
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleOpenScopeShare}
+                  className="min-h-[32px] rounded border border-line px-2.5 py-1 font-mono text-[10.5px] text-ink-soft uppercase transition-colors hover:border-ink hover:text-ink"
+                >
+                  {scopeShareLabel}
+                </button>
+                {(selection.type === "topic" || selection.type === "folder") && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteTopic(selection.topic)}
+                    className="min-h-[32px] rounded border border-c-crit/40 px-2.5 py-1 font-mono text-[10.5px] text-c-crit uppercase transition-colors hover:border-c-crit hover:bg-c-crit/5"
+                  >
+                    Delete topic
+                  </button>
+                )}
+              </div>
+            )}
           </div>
-          <div className="flex w-full flex-wrap items-center gap-2.5 sm:w-auto">
-            <div className="relative min-w-0 flex-1 sm:flex-none">
+          <div className="flex w-full flex-col gap-2.5 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+            <div className="relative w-full sm:w-[200px]">
               <svg
                 width="14"
                 height="14"
@@ -411,42 +410,44 @@ export function BinderApp({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="search flashcards..."
-                className="w-full min-h-[42px] rounded border border-line bg-card py-2.5 pr-3.5 pl-8 font-mono text-[13px] text-ink outline-none focus:border-ink sm:w-[200px]"
+                className="w-full min-h-[44px] rounded border border-line bg-card py-2.5 pr-3.5 pl-8 font-mono text-[13px] text-ink outline-none focus:border-ink"
               />
             </div>
-            {searchScope === "mine" && (
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+              {searchScope === "mine" && (
+                <button
+                  type="button"
+                  onClick={toggleSelectMode}
+                  className={
+                    "min-h-[44px] rounded border border-line px-3.5 py-2.5 text-[13.5px] font-semibold transition-opacity hover:opacity-88 " +
+                    (isSelectMode ? "bg-ink text-paper" : "text-ink")
+                  }
+                >
+                  {isSelectMode ? "Cancel" : "Select"}
+                </button>
+              )}
               <button
                 type="button"
-                onClick={toggleSelectMode}
-                className={
-                  "min-h-[42px] rounded border border-line px-3.5 py-2.5 text-[13.5px] font-semibold transition-opacity hover:opacity-88 " +
-                  (isSelectMode ? "bg-ink text-paper" : "text-ink")
-                }
+                onClick={() => setModalState({ type: "quiz" })}
+                className="min-h-[44px] rounded border border-line px-3.5 py-2.5 text-[13.5px] font-semibold text-ink transition-opacity hover:opacity-88"
               >
-                {isSelectMode ? "Cancel" : "Select"}
+                Quiz
               </button>
-            )}
-            <button
-              type="button"
-              onClick={() => setModalState({ type: "quiz" })}
-              className="min-h-[42px] rounded border border-line px-3.5 py-2.5 text-[13.5px] font-semibold text-ink transition-opacity hover:opacity-88"
-            >
-              Quiz
-            </button>
-            <button
-              type="button"
-              onClick={() => setModalState({ type: "import" })}
-              className="min-h-[42px] rounded border border-line px-3.5 py-2.5 text-[13.5px] font-semibold text-ink transition-opacity hover:opacity-88"
-            >
-              Upload .md
-            </button>
-            <button
-              type="button"
-              onClick={() => setModalState({ type: "form", noteId: null })}
-              className="min-h-[42px] rounded bg-ink px-4 py-2.5 text-[13.5px] font-semibold text-paper transition-opacity hover:opacity-88"
-            >
-              + New entry
-            </button>
+              <button
+                type="button"
+                onClick={() => setModalState({ type: "import" })}
+                className="min-h-[44px] rounded border border-line px-3.5 py-2.5 text-[13.5px] font-semibold text-ink transition-opacity hover:opacity-88"
+              >
+                Upload .md
+              </button>
+              <button
+                type="button"
+                onClick={() => setModalState({ type: "form", noteId: null })}
+                className="min-h-[44px] rounded bg-ink px-4 py-2.5 text-[13.5px] font-semibold text-paper transition-opacity hover:opacity-88"
+              >
+                + New entry
+              </button>
+            </div>
           </div>
         </div>
 
@@ -479,21 +480,21 @@ export function BinderApp({
           </div>
 
           {isSelectMode && selectedIds.size > 0 && (
-            <div className="flex flex-wrap items-center gap-2 rounded border border-line bg-paper-grid px-3 py-1.5">
+            <div className="flex w-full flex-wrap items-center gap-2 rounded border border-line bg-paper-grid px-3 py-2 sm:w-auto">
               <span className="font-mono text-[11px] text-ink-soft">
                 {selectedIds.size} selected
               </span>
               <button
                 type="button"
                 onClick={() => setModalState({ type: "bulk-move" })}
-                className="rounded border border-line bg-card px-2.5 py-1 text-xs font-semibold text-ink hover:bg-paper"
+                className="min-h-[36px] rounded border border-line bg-card px-3 text-xs font-semibold text-ink hover:bg-paper"
               >
                 Move
               </button>
               <button
                 type="button"
                 onClick={() => setModalState({ type: "bulk-share" })}
-                className="rounded border border-line bg-card px-2.5 py-1 text-xs font-semibold text-ink hover:bg-paper"
+                className="min-h-[36px] rounded border border-line bg-card px-3 text-xs font-semibold text-ink hover:bg-paper"
               >
                 Share to group
               </button>
@@ -501,7 +502,7 @@ export function BinderApp({
                 type="button"
                 onClick={handleBulkDelete}
                 disabled={isPending}
-                className="rounded border border-line bg-card px-2.5 py-1 text-xs font-semibold text-c-crit hover:bg-paper disabled:opacity-50"
+                className="min-h-[36px] rounded border border-line bg-card px-3 text-xs font-semibold text-c-crit hover:bg-paper disabled:opacity-50"
               >
                 Delete
               </button>
