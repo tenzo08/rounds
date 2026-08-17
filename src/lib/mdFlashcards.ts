@@ -74,30 +74,18 @@ export function redactFocusFromText(text: string, focus: string): string {
 
 export const FLASHCARD_IMPORT_PROMPT = `Please create a markdown flashcard file based on the PDF I've attached to this conversation.
 
-IMPORTANT — you must actually create and give me a downloadable .md file. Do not just describe the flashcards, do not summarize the PDF in plain prose, and do not ask me follow-up questions first. If you have a file-creation/code-interpreter tool available, use it now to generate a real .md file and give me the download link. If you do NOT have that ability, then instead output the complete raw markdown directly in your reply — nothing before it, nothing after it, no extra commentary, no explanation of what you did — just the exact markdown content itself, so I can copy it and save it as a .md file myself.
+YOUR #1 PRIORITY IS COMPLETENESS. Read the entire document from the first page to the last — every section, every paragraph, do not stop early and do not sample only the "important-looking" parts. Extract EVERY named term, drug, lab value, sign/symptom, procedure, anatomical structure, classification, and concept a nursing student could be tested on. If the document names it, defines it, or explains what it does, it gets a card — even a term mentioned once, in passing, in a single sentence. When in doubt, include it. A 10-page document with 60 distinct terms should produce roughly 60 cards, not 10 or 20. Missing terms is the #1 failure mode — do not let that happen.
 
-Your job is extraction, not summarization. Go through the PDF systematically — section by section, paragraph by paragraph — and pull out every important word: every named term, drug, lab value, sign/symptom, procedure, anatomical structure, classification, and concept a nursing student could be tested on. Do not filter by "importance" beyond that; if the material defines it, names it, or explains what it does, it earns its own card. Do not skip terms just because they only appear in one sentence — a one-sentence definition is still a full card.
+Apply these three rules to every card:
 
-ATOMICITY IS THE MOST IMPORTANT RULE: each card covers exactly ONE word or phrase. Never combine two or more terms into a single card, even if the source material discusses them together in the same sentence or paragraph.
+1. ATOMIC: one card = one term. Never merge two or more terms into a single card, even if the source discusses them in the same sentence. ("Loop and thiazide diuretics" → two separate cards, one per drug class. "Signs of shock: tachycardia, hypotension, cool skin" → three separate cards, one per sign.)
+2. DON'T GIVE AWAY THE ANSWER: never state the focus term itself (or an obvious variant of it) inside its own Description — describe what it is/does without naming it. (Focus "Gerontological Nursing" → description should NOT start with "Gerontological nursing is/focuses on..."; instead describe the specialty without saying its name.)
+3. SELF-CONTAINED: each description should make sense on its own, in 2-5 sentences, without needing any other card.
 
-- WRONG: one card titled "Loop and Thiazide Diuretics" describing both drug classes at once.
-- RIGHT: a separate "Furosemide" (or "Loop diuretics") card, and a separate "Hydrochlorothiazide" (or "Thiazide diuretics") card.
-- WRONG: one card titled "Signs of Shock" that lists tachycardia, hypotension, and cool clammy skin all in the description.
-- RIGHT: three separate cards — one for "Tachycardia" (as a shock sign), one for "Hypotension," one for "Cool, clammy skin" — each with its own focused explanation.
+Output ONLY this markdown format, repeated once per term, nothing else before or after it (no intro, no summary, no explanation):
 
-If you catch yourself writing a description with a list of several distinct named things in it, stop and split it into that many separate cards instead.
+## <card title>
+Focus: <the term to memorize>
+Description: <2-5 sentences explaining it, per rules 2 and 3 above>
 
-NEVER STATE THE FOCUS TERM ITSELF (or an obvious variant/plural/conjugation of it) ANYWHERE IN THE DESCRIPTION. These are quiz cards — the student reads the description and has to recall the term; if the description just restates the term, there's nothing to recall.
-
-- WRONG: Focus: Gerontological Nursing / Description: "Gerontological nursing focuses on the care of older adults across healthcare settings..." (restates the answer immediately).
-- RIGHT: Focus: Gerontological Nursing / Description: "A nursing specialty focused on the care of older adults across healthcare settings, covering assessment, medication safety, psychosocial support, and end-of-life care." (describes it without naming it).
-
-Write every description as if the term itself is redacted — describe what it IS, what it DOES, or what CAUSES/TREATS/INDICATES it, using other words, never the term.
-
-Convert the material into flashcards using EXACTLY this Markdown format, and output ONLY the markdown — no commentary before or after it:
-
-## <short, specific card title — usually the same as the focus term>
-Focus: <the single word or short phrase being defined — this is the card's front>
-Description: <a concise, self-contained 2-5 sentence definition/explanation of that ONE term only — this is the card's back. It should make sense on its own, without needing to see any other card>
-
-Repeat that block for every distinct term in the PDF. Err heavily on the side of MORE, smaller cards rather than fewer, larger ones — a chapter with 40 important terms should produce roughly 40 cards, not 5. When unsure whether to split something into more cards, split it.`;
+If you have a file-creation/code-interpreter tool available, use it to generate an actual downloadable .md file and give me the link. If you don't have that ability, output the complete raw markdown directly in your reply instead, with nothing before or after it, so I can copy it and save it as a .md file myself.`;
