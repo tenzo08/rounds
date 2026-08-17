@@ -46,7 +46,13 @@ export function GroupAutoRefresh({ groupId }: GroupAutoRefreshProps) {
         () => router.refresh(),
       );
 
-    void authenticate().then(() => channel.subscribe());
+    void authenticate().then(() =>
+      channel.subscribe((status, err) => {
+        // Temporary diagnostic — shows up in the browser console so we can
+        // see whether the channel actually authorizes and subscribes.
+        console.log("[GroupAutoRefresh] channel status:", status, err ?? "");
+      }),
+    );
     tokenTimer = setInterval(() => void authenticate(), TOKEN_REFRESH_MS);
 
     return () => {

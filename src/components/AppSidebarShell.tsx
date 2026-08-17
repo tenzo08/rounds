@@ -106,7 +106,7 @@ export function AppSidebarShell({
             closeDrawer();
             onSignOut();
           }}
-          className="shrink-0 font-mono text-[10.5px] text-[#9AA1A8] uppercase transition-colors hover:text-binder-text"
+          className="shrink-0 rounded border border-c-crit/40 px-2.5 py-1 font-mono text-[10px] text-c-crit uppercase transition-colors hover:border-c-crit hover:bg-c-crit/10"
         >
           Sign out
         </button>
@@ -156,13 +156,13 @@ export function AppSidebarShell({
             role="dialog"
             aria-modal="true"
             aria-label="Navigation"
-            className="relative flex h-full w-[280px] max-w-[85vw] flex-col bg-binder py-7 text-binder-text"
+            className="relative flex h-full w-[280px] max-w-[85vw] flex-col bg-binder pt-14 pb-7 text-binder-text"
           >
             <button
               type="button"
               onClick={closeDrawer}
               aria-label="Close menu"
-              className="absolute top-4 right-4 flex h-9 w-9 items-center justify-center text-lg text-binder-text/70"
+              className="absolute top-3 right-3 flex h-8 w-8 items-center justify-center rounded text-lg text-binder-text/70 hover:bg-binder-soft"
             >
               ×
             </button>
