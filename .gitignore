@@ -22,3 +22,7 @@ coverage/
 next-env.d.ts
 
 /src/generated/prisma
+
+# --- Local example screenshots used while debugging with Claude Code, never pushed ---
+image.png
+image*.png

@@ -3,9 +3,10 @@ import { stripMarkdown } from "@/lib/markdown";
 
 interface NoteCardData {
   topic: string;
+  folder: string;
   title: string;
-  body: string;
-  tags: string[];
+  focus: string;
+  description: string;
 }
 
 interface NoteCardAuthor {
@@ -33,29 +34,23 @@ export function NoteCard({ note, author, groupChips, onClick }: NoteCardProps) {
         style={{ background: color }}
       />
       <div
-        className="mt-1.5 mb-2 font-mono text-[10px] font-medium tracking-[0.08em] uppercase"
+        className="mt-1.5 mb-2 truncate font-mono text-[10px] font-medium tracking-[0.08em] uppercase"
         style={{ color }}
       >
-        {note.topic}
+        {note.topic} / {note.folder}
       </div>
-      <h3 className="m-0 mb-2 font-serif text-[16.5px] leading-[1.3] text-ink">
+      <h3 className="m-0 mb-1.5 font-serif text-[15px] leading-[1.3] text-ink-soft">
         {note.title}
       </h3>
+      <div
+        className="mb-2 rounded-[3px] px-2.5 py-1.5 font-serif text-[17px] leading-[1.25] text-ink"
+        style={{ background: `${color}1a` }}
+      >
+        {note.focus}
+      </div>
       <p className="m-0 mb-3 line-clamp-3 text-[12.8px] leading-[1.55] text-ink-soft">
-        {stripMarkdown(note.body)}
+        {stripMarkdown(note.description)}
       </p>
-      {note.tags.length > 0 && (
-        <div className="mb-3 flex flex-wrap gap-[5px]">
-          {note.tags.slice(0, 4).map((tag) => (
-            <span
-              key={tag}
-              className="rounded-[3px] bg-paper-grid px-[7px] py-[3px] font-mono text-[10px] text-ink-soft"
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
-      )}
       {groupChips && groupChips.length > 0 && (
         <div className="mb-3 flex flex-wrap gap-[5px]">
           {groupChips.map((name) => (
@@ -75,7 +70,7 @@ export function NoteCard({ note, author, groupChips, onClick }: NoteCardProps) {
             <img
               src={author.image}
               alt=""
-              className="h-5 w-5 shrink-0 rounded-full"
+              className="h-5 w-5 shrink-0 rounded-full object-cover"
             />
           ) : (
             <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-paper-grid text-[9px] font-semibold text-ink-soft">

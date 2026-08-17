@@ -31,22 +31,21 @@ model User {
 }
 
 model Note {
-  id        String    @id @default(cuid())
-  ownerId   String    @map("owner_id")
-  owner     User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  title     String
-  topicId   String    @map("topic_id")
-  topic     Topic     @relation(fields: [topicId], references: [id], onDelete: Cascade)
-  body      String
-  tags      String[]
-  link      String?
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
+  id          String   @id @default(cuid())
+  ownerId     String   @map("owner_id")
+  owner       User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  title       String
+  folderId    String   @map("folder_id")
+  folder      Folder   @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  focus       String
+  description String
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
   shares NoteShare[]
 
   @@index([ownerId])
-  @@index([topicId])
+  @@index([folderId])
   @@map("notes")
 }
 
@@ -57,10 +56,23 @@ model Topic {
   name      String
   createdAt DateTime @default(now()) @map("created_at")
 
-  notes Note[]
+  folders Folder[]
 
   @@unique([ownerId, name])
   @@map("topics")
+}
+
+model Folder {
+  id        String   @id @default(cuid())
+  topicId   String   @map("topic_id")
+  topic     Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  notes Note[]
+
+  @@unique([topicId, name])
+  @@map("folders")
 }
 
 model Group {

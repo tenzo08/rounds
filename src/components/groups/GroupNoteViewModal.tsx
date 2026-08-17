@@ -27,7 +27,7 @@ export function GroupNoteViewModal({ note, onClose }: GroupNoteViewModalProps) {
           <img
             src={note.authorImage}
             alt=""
-            className="h-4 w-4 shrink-0 rounded-full"
+            className="h-4 w-4 shrink-0 rounded-full object-cover"
           />
         ) : (
           <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-paper-grid text-[8px] font-semibold text-ink-soft">
@@ -35,37 +35,20 @@ export function GroupNoteViewModal({ note, onClose }: GroupNoteViewModalProps) {
           </span>
         )}
         <span>
-          {note.authorName} · {note.topic} · updated {updated}
+          {note.authorName} · {note.topic} / {note.folder} · updated {updated}
         </span>
       </div>
 
-      <div className="mt-3.5 text-sm leading-[1.65] text-ink">
-        {renderMarkdown(note.body)}
+      <div
+        className="mt-3.5 rounded-[3px] px-3.5 py-3 font-serif text-[20px] leading-[1.3] text-ink"
+        style={{ background: `${color}1a` }}
+      >
+        {note.focus}
       </div>
 
-      {note.tags.length > 0 && (
-        <div className="mt-3.5 flex flex-wrap gap-[5px]">
-          {note.tags.map((tag) => (
-            <span
-              key={tag}
-              className="rounded-[3px] bg-paper-grid px-[7px] py-[3px] font-mono text-[10px] text-ink-soft"
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
-      )}
-
-      {note.link && (
-        <a
-          href={note.link}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-3.5 inline-block font-mono text-[12.5px] text-c-medsurg"
-        >
-          {note.link} ↗
-        </a>
-      )}
+      <div className="mt-3.5 text-sm leading-[1.65] text-ink">
+        {renderMarkdown(note.description)}
+      </div>
 
       <div className="mt-[22px] flex justify-end">
         <button

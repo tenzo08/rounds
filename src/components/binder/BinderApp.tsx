@@ -1,11 +1,13 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { Sidebar, type ActiveTopic } from "@/components/binder/Sidebar";
+import { Sidebar, type ActiveSelection } from "@/components/binder/Sidebar";
 import { NoteGrid } from "@/components/binder/NoteGrid";
 import { NoteCard } from "@/components/binder/NoteCard";
 import { NoteViewModal } from "@/components/binder/NoteViewModal";
 import { NoteFormModal } from "@/components/binder/NoteFormModal";
+import { MdImportModal } from "@/components/binder/MdImportModal";
+import { QuizModal, type QuizCard } from "@/components/binder/QuizModal";
 import { GroupNoteViewModal } from "@/components/groups/GroupNoteViewModal";
 import { signOutAction } from "@/lib/actions/auth";
 import {
@@ -20,7 +22,9 @@ type ModalState =
   | { type: "closed" }
   | { type: "view"; noteId: string }
   | { type: "form"; noteId: string | null }
-  | { type: "view-shared"; noteId: string };
+  | { type: "view-shared"; noteId: string }
+  | { type: "import" }
+  | { type: "quiz" };
 
 type SearchScope = "mine" | "everywhere";
 
@@ -41,12 +45,21 @@ function getErrorMessage(error: unknown): string {
 function matchesQuery(
   query: string,
   title: string,
-  body: string,
-  tags: string[],
+  focus: string,
+  description: string,
 ): boolean {
   if (!query) return true;
-  const haystack = `${title} ${body} ${tags.join(" ")}`.toLowerCase();
+  const haystack = `${title} ${focus} ${description}`.toLowerCase();
   return haystack.includes(query);
+}
+
+function matchesSelection(
+  note: { topic: string; folder: string },
+  selection: ActiveSelection,
+): boolean {
+  if (selection.type === "all") return true;
+  if (selection.type === "topic") return note.topic === selection.topic;
+  return note.topic === selection.topic && note.folder === selection.folder;
 }
 
 export function BinderApp({
@@ -57,7 +70,7 @@ export function BinderApp({
   userEmail,
   userImage,
 }: BinderAppProps) {
-  const [activeTopic, setActiveTopic] = useState<ActiveTopic>("all");
+  const [selection, setSelection] = useState<ActiveSelection>({ type: "all" });
   const [searchQuery, setSearchQuery] = useState("");
   const [searchScope, setSearchScope] = useState<SearchScope>("mine");
   const [modalState, setModalState] = useState<ModalState>({ type: "closed" });
@@ -67,31 +80,36 @@ export function BinderApp({
   const filteredNotes = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     return notes.filter((note) => {
-      if (activeTopic !== "all" && note.topic !== activeTopic) {
-        return false;
-      }
-      return matchesQuery(query, note.title, note.body, note.tags);
+      if (!matchesSelection(note, selection)) return false;
+      return matchesQuery(query, note.title, note.focus, note.description);
     });
-  }, [notes, activeTopic, searchQuery]);
+  }, [notes, selection, searchQuery]);
 
   const everywhereResults = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     const own = notes
-      .filter((n) => matchesQuery(query, n.title, n.body, n.tags))
+      .filter((n) => matchesQuery(query, n.title, n.focus, n.description))
       .map((n) => ({ kind: "own" as const, note: n }));
     const shared = sharedWithMe
-      .filter((n) => matchesQuery(query, n.title, n.body, n.tags))
+      .filter((n) => matchesQuery(query, n.title, n.focus, n.description))
       .map((n) => ({ kind: "shared" as const, note: n }));
     return [...own, ...shared].sort((a, b) =>
       b.note.updatedAt.localeCompare(a.note.updatedAt),
     );
   }, [notes, sharedWithMe, searchQuery]);
 
-  const viewTitle = activeTopic === "all" ? "All entries" : activeTopic;
+  const viewTitle =
+    selection.type === "all"
+      ? "All entries"
+      : selection.type === "topic"
+        ? selection.topic
+        : `${selection.topic} / ${selection.folder}`;
   const viewSub =
-    activeTopic === "all"
-      ? "Every note across every topic."
-      : `Notes filed under ${activeTopic}.`;
+    selection.type === "all"
+      ? "Every flashcard across every topic."
+      : selection.type === "topic"
+        ? `Flashcards filed under ${selection.topic}.`
+        : `Flashcards in ${selection.folder}.`;
 
   const viewingNote =
     modalState.type === "view"
@@ -105,6 +123,18 @@ export function BinderApp({
     modalState.type === "form" && modalState.noteId
       ? (notes.find((n) => n.id === modalState.noteId) ?? null)
       : null;
+
+  const defaultTopic = selection.type !== "all" ? selection.topic : "";
+  const defaultFolder = selection.type === "folder" ? selection.folder : "";
+
+  const quizCards: QuizCard[] = notes.map((n) => ({
+    id: n.id,
+    title: n.title,
+    focus: n.focus,
+    description: n.description,
+    topic: n.topic,
+    folder: n.folder,
+  }));
 
   function closeModal() {
     setModalState({ type: "closed" });
@@ -141,8 +171,8 @@ export function BinderApp({
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
       <Sidebar
-        activeTopic={activeTopic}
-        onSelect={setActiveTopic}
+        selection={selection}
+        onSelect={setSelection}
         topics={topics}
         allCount={notes.length}
         userName={userName}
@@ -161,7 +191,7 @@ export function BinderApp({
             </h2>
             <p className="m-0 truncate text-[13.5px] text-ink-soft">
               {searchScope === "everywhere"
-                ? "Your notes and notes shared with you through groups."
+                ? "Your flashcards and flashcards shared with you through groups."
                 : viewSub}
             </p>
           </div>
@@ -183,10 +213,24 @@ export function BinderApp({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="search notes, tags..."
-                className="w-full min-h-[42px] rounded border border-line bg-card py-2.5 pr-3.5 pl-8 font-mono text-[13px] text-ink outline-none focus:border-ink sm:w-[220px]"
+                placeholder="search flashcards..."
+                className="w-full min-h-[42px] rounded border border-line bg-card py-2.5 pr-3.5 pl-8 font-mono text-[13px] text-ink outline-none focus:border-ink sm:w-[200px]"
               />
             </div>
+            <button
+              type="button"
+              onClick={() => setModalState({ type: "quiz" })}
+              className="min-h-[42px] rounded border border-line px-3.5 py-2.5 text-[13.5px] font-semibold text-ink transition-opacity hover:opacity-88"
+            >
+              Quiz
+            </button>
+            <button
+              type="button"
+              onClick={() => setModalState({ type: "import" })}
+              className="min-h-[42px] rounded border border-line px-3.5 py-2.5 text-[13.5px] font-semibold text-ink transition-opacity hover:opacity-88"
+            >
+              Upload .md
+            </button>
             <button
               type="button"
               onClick={() => setModalState({ type: "form", noteId: null })}
@@ -296,11 +340,30 @@ export function BinderApp({
       {modalState.type === "form" && (
         <NoteFormModal
           note={editingNote}
-          defaultTopic={activeTopic === "all" ? "" : activeTopic}
-          existingTopics={topics.map((t) => t.name)}
+          defaultTopic={defaultTopic}
+          defaultFolder={defaultFolder}
+          topics={topics}
           onClose={closeModal}
           onSubmit={handleSubmitForm}
           isSaving={isPending}
+        />
+      )}
+
+      {modalState.type === "import" && (
+        <MdImportModal
+          topics={topics}
+          defaultTopic={defaultTopic}
+          defaultFolder={defaultFolder}
+          onClose={closeModal}
+          onImported={closeModal}
+        />
+      )}
+
+      {modalState.type === "quiz" && (
+        <QuizModal
+          title="My Binder"
+          cards={quizCards}
+          onClose={closeModal}
         />
       )}
     </div>

@@ -15,18 +15,73 @@ function getErrorMessage(error: unknown): string {
   return "Something went wrong. Please try again.";
 }
 
+const AVATAR_SIZE = 160;
+
+function downscaleToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      const canvas = document.createElement("canvas");
+      canvas.width = AVATAR_SIZE;
+      canvas.height = AVATAR_SIZE;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        reject(new Error("Could not process image"));
+        return;
+      }
+      const side = Math.min(img.width, img.height);
+      const sx = (img.width - side) / 2;
+      const sy = (img.height - side) / 2;
+      ctx.drawImage(img, sx, sy, side, side, 0, 0, AVATAR_SIZE, AVATAR_SIZE);
+      resolve(canvas.toDataURL("image/jpeg", 0.85));
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("Couldn't read that image file"));
+    };
+    img.src = objectUrl;
+  });
+}
+
 export function EditProfileModal({
   currentName,
   currentAvatarUrl,
   onClose,
 }: EditProfileModalProps) {
   const [displayName, setDisplayName] = useState(currentName);
-  const [avatarUrl, setAvatarUrl] = useState(currentAvatarUrl ?? "");
+  const [previewUrl, setPreviewUrl] = useState(currentAvatarUrl ?? "");
+  // Tracks whether the picture was actually touched this session — lets
+  // "just changed the nickname" saves leave an existing (e.g. Google-seeded)
+  // avatar alone instead of wiping it, since the server only accepts
+  // uploaded data: URIs, never the old http(s) link.
+  const [pendingAvatar, setPendingAvatar] = useState<string | undefined>(
+    undefined,
+  );
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
 
-  const previewUrl = avatarUrl.trim();
+  async function handleFileSelected(file: File) {
+    if (!file.type.startsWith("image/")) {
+      setError("Please choose an image file");
+      return;
+    }
+    try {
+      const dataUrl = await downscaleToDataUrl(file);
+      setPreviewUrl(dataUrl);
+      setPendingAvatar(dataUrl);
+      setError(null);
+    } catch (err) {
+      setError(getErrorMessage(err));
+    }
+  }
+
+  function handleRemove() {
+    setPreviewUrl("");
+    setPendingAvatar("");
+  }
 
   async function handleSave() {
     const trimmedName = displayName.trim();
@@ -38,7 +93,7 @@ export function EditProfileModal({
     setIsSaving(true);
     setError(null);
     try {
-      await updateProfile({ displayName: trimmedName, avatarUrl: avatarUrl.trim() });
+      await updateProfile({ displayName: trimmedName, avatarUrl: pendingAvatar });
       onClose();
     } catch (err) {
       setError(getErrorMessage(err));
@@ -57,16 +112,36 @@ export function EditProfileModal({
           <img
             src={previewUrl}
             alt=""
-            className="h-12 w-12 shrink-0 rounded-full object-cover"
+            className="h-14 w-14 shrink-0 rounded-full object-cover"
           />
         ) : (
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-paper-grid text-base font-semibold text-ink-soft">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-paper-grid text-base font-semibold text-ink-soft">
             {(displayName || "?").slice(0, 1).toUpperCase()}
           </div>
         )}
-        <p className="text-xs text-ink-soft">
-          Preview — paste an image link below to change it.
-        </p>
+        <div>
+          <label className="inline-block cursor-pointer rounded border border-line bg-card px-3 py-1.5 text-xs font-semibold text-ink transition-opacity hover:opacity-88">
+            Upload picture
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void handleFileSelected(file);
+              }}
+            />
+          </label>
+          {previewUrl && (
+            <button
+              type="button"
+              onClick={handleRemove}
+              className="ml-2 font-mono text-[10.5px] text-ink-soft uppercase hover:text-ink"
+            >
+              Remove
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="mt-4">
@@ -84,22 +159,6 @@ export function EditProfileModal({
           placeholder="How you'll appear to classmates"
           className="w-full rounded border border-line bg-paper px-[11px] py-[9px] font-sans text-sm text-ink outline-none focus:border-ink"
         />
-      </div>
-
-      <div className="mt-4">
-        <label className="mb-1.5 block font-mono text-[10.5px] tracking-[0.08em] text-ink-soft uppercase">
-          Profile picture (link, optional)
-        </label>
-        <input
-          type="text"
-          value={avatarUrl}
-          onChange={(e) => setAvatarUrl(e.target.value)}
-          placeholder="https://…"
-          className="w-full rounded border border-line bg-paper px-[11px] py-[9px] font-sans text-sm text-ink outline-none focus:border-ink"
-        />
-        <p className="-mt-1 mt-1.5 font-mono text-[10.5px] text-ink-soft opacity-75">
-          Leave blank to show your initial instead
-        </p>
       </div>
 
       {error && <p className="mt-2 text-xs text-c-crit">{error}</p>}

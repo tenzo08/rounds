@@ -3,18 +3,24 @@ import type { GroupRole } from "@/generated/prisma/client";
 export interface NoteDTO {
   id: string;
   title: string;
+  focus: string;
+  description: string;
   topic: string;
-  body: string;
-  tags: string[];
-  link: string | null;
+  folder: string;
   createdAt: string;
   updatedAt: string;
   sharedGroups: string[];
 }
 
+export interface FolderSummaryDTO {
+  name: string;
+  count: number;
+}
+
 export interface TopicSummaryDTO {
   name: string;
   count: number;
+  folders: FolderSummaryDTO[];
 }
 
 export interface GroupSummaryDTO {
@@ -27,7 +33,6 @@ export interface GroupSummaryDTO {
 export interface GroupMemberDTO {
   userId: string;
   name: string;
-  email: string;
   image: string | null;
   role: GroupRole;
 }
@@ -55,10 +60,10 @@ export interface ShareableGroupDTO {
 export interface GroupFeedNoteDTO {
   id: string;
   title: string;
+  focus: string;
+  description: string;
   topic: string;
-  body: string;
-  tags: string[];
-  link: string | null;
+  folder: string;
   updatedAt: string;
   authorId: string;
   authorName: string;

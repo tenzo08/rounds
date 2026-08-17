@@ -2,14 +2,16 @@
 
 import { useRef, useState } from "react";
 import { ModalShell } from "@/components/binder/ModalShell";
+import { TopicFolderFields } from "@/components/binder/TopicFolderFields";
 import { topicColor } from "@/lib/topics";
 import type { NoteInput } from "@/lib/actions/notes";
-import type { NoteDTO } from "@/lib/types";
+import type { NoteDTO, TopicSummaryDTO } from "@/lib/types";
 
 interface NoteFormModalProps {
   note: NoteDTO | null;
   defaultTopic: string;
-  existingTopics: string[];
+  defaultFolder: string;
+  topics: TopicSummaryDTO[];
   onClose: () => void;
   onSubmit: (input: NoteInput) => void;
   isSaving: boolean;
@@ -18,58 +20,66 @@ interface NoteFormModalProps {
 export function NoteFormModal({
   note,
   defaultTopic,
-  existingTopics,
+  defaultFolder,
+  topics,
   onClose,
   onSubmit,
   isSaving,
 }: NoteFormModalProps) {
   const [title, setTitle] = useState(note?.title ?? "");
   const [topic, setTopic] = useState(note?.topic ?? defaultTopic);
-  const [body, setBody] = useState(note?.body ?? "");
-  const [tagsRaw, setTagsRaw] = useState(note?.tags.join(", ") ?? "");
-  const [link, setLink] = useState(note?.link ?? "");
-  const [error, setError] = useState<{ title?: string; topic?: string }>({});
+  const [folder, setFolder] = useState(note?.folder ?? defaultFolder);
+  const [focus, setFocus] = useState(note?.focus ?? "");
+  const [description, setDescription] = useState(note?.description ?? "");
+  const [error, setError] = useState<{
+    title?: string;
+    topic?: string;
+    folder?: string;
+    focus?: string;
+    description?: string;
+  }>({});
   const titleRef = useRef<HTMLInputElement>(null);
   const topicRef = useRef<HTMLInputElement>(null);
+  const folderRef = useRef<HTMLInputElement>(null);
+  const focusRef = useRef<HTMLInputElement>(null);
 
   const color = topicColor(topic || defaultTopic);
 
   function handleSubmit() {
     const trimmedTitle = title.trim();
     const trimmedTopic = topic.trim();
-    const nextError: { title?: string; topic?: string } = {};
+    const trimmedFolder = folder.trim();
+    const trimmedFocus = focus.trim();
+    const trimmedDescription = description.trim();
+    const nextError: typeof error = {};
     if (!trimmedTitle) nextError.title = "Title is required";
     if (!trimmedTopic) nextError.topic = "Topic is required";
+    if (!trimmedFolder) nextError.folder = "Folder is required";
+    if (!trimmedFocus) nextError.focus = "Focus is required";
+    if (!trimmedDescription) nextError.description = "Description is required";
 
-    if (nextError.title) {
+    if (Object.keys(nextError).length > 0) {
       setError(nextError);
-      titleRef.current?.focus();
+      if (nextError.title) titleRef.current?.focus();
+      else if (nextError.topic) topicRef.current?.focus();
+      else if (nextError.folder) folderRef.current?.focus();
+      else if (nextError.focus) focusRef.current?.focus();
       return;
     }
-    if (nextError.topic) {
-      setError(nextError);
-      topicRef.current?.focus();
-      return;
-    }
-
-    const tags = tagsRaw
-      .split(",")
-      .map((t) => t.trim())
-      .filter(Boolean);
 
     onSubmit({
       title: trimmedTitle,
       topic: trimmedTopic,
-      body: body.trim(),
-      tags,
-      link: link.trim(),
+      folder: trimmedFolder,
+      focus: trimmedFocus,
+      description: trimmedDescription,
     });
   }
 
   return (
     <ModalShell accentColor={color} onClose={onClose}>
       <h3 className="m-0 font-serif text-[19px] text-ink">
-        {note ? "Edit entry" : "New entry"}
+        {note ? "Edit flashcard" : "New flashcard"}
       </h3>
 
       <Field label="Title">
@@ -81,70 +91,65 @@ export function NoteFormModal({
             setTitle(e.target.value);
             if (error.title) setError((prev) => ({ ...prev, title: undefined }));
           }}
-          placeholder="e.g. Beta-blocker teaching points"
+          placeholder="e.g. Beta-blockers"
           className="w-full rounded border border-line bg-paper px-[11px] py-[9px] font-sans text-sm text-ink outline-none focus:border-ink"
         />
         {error.title && <p className="mt-1 text-xs text-c-crit">{error.title}</p>}
       </Field>
 
-      <Field label="Topic">
-        <input
-          ref={topicRef}
-          type="text"
-          list="topic-suggestions"
-          value={topic}
-          onChange={(e) => {
-            setTopic(e.target.value);
+      <div className="mt-4">
+        <TopicFolderFields
+          topics={topics}
+          topic={topic}
+          folder={folder}
+          onTopicChange={(v) => {
+            setTopic(v);
             if (error.topic) setError((prev) => ({ ...prev, topic: undefined }));
           }}
-          placeholder="e.g. Fundamentals, or make up your own"
+          onFolderChange={(v) => {
+            setFolder(v);
+            if (error.folder) setError((prev) => ({ ...prev, folder: undefined }));
+          }}
+          topicError={error.topic}
+          folderError={error.folder}
+          topicRef={topicRef}
+          folderRef={folderRef}
+        />
+      </div>
+
+      <Field label="Focus (the word or phrase to memorize)">
+        <input
+          ref={focusRef}
+          type="text"
+          value={focus}
+          onChange={(e) => {
+            setFocus(e.target.value);
+            if (error.focus) setError((prev) => ({ ...prev, focus: undefined }));
+          }}
+          placeholder="e.g. Hypokalemia"
           className="w-full rounded border border-line bg-paper px-[11px] py-[9px] font-sans text-sm text-ink outline-none focus:border-ink"
         />
-        <datalist id="topic-suggestions">
-          {existingTopics.map((t) => (
-            <option key={t} value={t} />
-          ))}
-        </datalist>
-        {error.topic ? (
-          <p className="mt-1 text-xs text-c-crit">{error.topic}</p>
-        ) : (
-          <p className="-mt-1 font-mono text-[10.5px] text-ink-soft opacity-75">
-            Type any topic — new ones are created automatically
-          </p>
-        )}
+        {error.focus && <p className="mt-1 text-xs text-c-crit">{error.focus}</p>}
       </Field>
 
-      <Field label="Notes">
+      <Field label="Description">
         <textarea
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          placeholder="What do you need to remember? One entry can hold a whole lecture — use # for a heading, - for a bullet, ** for bold."
+          value={description}
+          onChange={(e) => {
+            setDescription(e.target.value);
+            if (error.description)
+              setError((prev) => ({ ...prev, description: undefined }));
+          }}
+          placeholder="What do you need to remember about it? Use # for a heading, - for a bullet, ** for bold."
           className="min-h-[120px] w-full resize-y rounded border border-line bg-paper px-[11px] py-[9px] font-sans text-sm leading-[1.5] text-ink outline-none focus:border-ink"
         />
-        <p className="-mt-1 font-mono text-[10.5px] text-ink-soft opacity-75">
-          # heading · - bullet · **bold** · leave a blank line between
-          sections
-        </p>
-      </Field>
-
-      <Field label="Tags (comma separated)">
-        <input
-          type="text"
-          value={tagsRaw}
-          onChange={(e) => setTagsRaw(e.target.value)}
-          placeholder="e.g. cardiac, dosing, nclex"
-          className="w-full rounded border border-line bg-paper px-[11px] py-[9px] font-sans text-sm text-ink outline-none focus:border-ink"
-        />
-      </Field>
-
-      <Field label="Reference link (optional)">
-        <input
-          type="text"
-          value={link}
-          onChange={(e) => setLink(e.target.value)}
-          placeholder="https://"
-          className="w-full rounded border border-line bg-paper px-[11px] py-[9px] font-sans text-sm text-ink outline-none focus:border-ink"
-        />
+        {error.description ? (
+          <p className="mt-1 text-xs text-c-crit">{error.description}</p>
+        ) : (
+          <p className="-mt-1 font-mono text-[10.5px] text-ink-soft opacity-75">
+            Keep it flashcard-sized — a few sentences, not a full lecture
+          </p>
+        )}
       </Field>
 
       <div className="mt-[22px] flex justify-end gap-2">
@@ -161,7 +166,7 @@ export function NoteFormModal({
           disabled={isSaving}
           className="rounded bg-ink px-4 py-2.5 text-[13.5px] font-semibold text-paper transition-opacity hover:opacity-88 disabled:opacity-50"
         >
-          {isSaving ? "Saving…" : note ? "Save changes" : "Add entry"}
+          {isSaving ? "Saving…" : note ? "Save changes" : "Add flashcard"}
         </button>
       </div>
     </ModalShell>

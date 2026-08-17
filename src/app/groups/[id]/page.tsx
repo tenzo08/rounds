@@ -48,7 +48,6 @@ export default async function GroupDetailPage({
     members: group.memberships.map((m) => ({
       userId: m.userId,
       name: m.user.displayName,
-      email: m.user.email,
       image: m.user.avatarUrl,
       role: m.role,
     })),
@@ -58,17 +57,19 @@ export default async function GroupDetailPage({
   // any member of this group can see everything shared into it.
   const shares = await prisma.noteShare.findMany({
     where: { groupId: id },
-    include: { note: { include: { owner: true, topic: true } } },
+    include: {
+      note: { include: { owner: true, folder: { include: { topic: true } } } },
+    },
     orderBy: { sharedAt: "desc" },
   });
 
   const feedNotes: GroupFeedNoteDTO[] = shares.map((s) => ({
     id: s.note.id,
     title: s.note.title,
-    topic: s.note.topic.name,
-    body: s.note.body,
-    tags: s.note.tags,
-    link: s.note.link,
+    topic: s.note.folder.topic.name,
+    folder: s.note.folder.name,
+    focus: s.note.focus,
+    description: s.note.description,
     updatedAt: s.note.updatedAt.toISOString(),
     authorId: s.note.ownerId,
     authorName: s.note.owner.displayName,

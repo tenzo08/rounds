@@ -21,12 +21,15 @@ export default async function Home() {
     prisma.user.findUniqueOrThrow({ where: { id: userId } }),
     prisma.note.findMany({
       where: { ownerId: userId },
-      include: { topic: true, shares: { include: { group: true } } },
+      include: {
+        folder: { include: { topic: true } },
+        shares: { include: { group: true } },
+      },
       orderBy: { updatedAt: "desc" },
     }),
     prisma.topic.findMany({
       where: { ownerId: userId },
-      include: { _count: { select: { notes: true } } },
+      include: { folders: { include: { _count: { select: { notes: true } } } } },
       orderBy: { name: "asc" },
     }),
     // Notes owned by someone else, shared into any group this user belongs to.
@@ -35,17 +38,20 @@ export default async function Home() {
         group: { memberships: { some: { userId } } },
         note: { ownerId: { not: userId } },
       },
-      include: { note: { include: { owner: true, topic: true } }, group: true },
+      include: {
+        note: { include: { owner: true, folder: { include: { topic: true } } } },
+        group: true,
+      },
     }),
   ]);
 
   const noteDTOs: NoteDTO[] = notes.map((note) => ({
     id: note.id,
     title: note.title,
-    topic: note.topic.name,
-    body: note.body,
-    tags: note.tags,
-    link: note.link,
+    topic: note.folder.topic.name,
+    folder: note.folder.name,
+    focus: note.focus,
+    description: note.description,
     createdAt: note.createdAt.toISOString(),
     updatedAt: note.updatedAt.toISOString(),
     sharedGroups: note.shares.map((s) => s.group.name),
@@ -53,7 +59,10 @@ export default async function Home() {
 
   const topicDTOs: TopicSummaryDTO[] = topics.map((t) => ({
     name: t.name,
-    count: t._count.notes,
+    count: t.folders.reduce((sum, f) => sum + f._count.notes, 0),
+    folders: t.folders
+      .map((f) => ({ name: f.name, count: f._count.notes }))
+      .sort((a, b) => a.name.localeCompare(b.name)),
   }));
 
   const sharedWithMeByNoteId = new Map<string, SharedWithMeNoteDTO>();
@@ -66,10 +75,10 @@ export default async function Home() {
     sharedWithMeByNoteId.set(share.note.id, {
       id: share.note.id,
       title: share.note.title,
-      topic: share.note.topic.name,
-      body: share.note.body,
-      tags: share.note.tags,
-      link: share.note.link,
+      topic: share.note.folder.topic.name,
+      folder: share.note.folder.name,
+      focus: share.note.focus,
+      description: share.note.description,
       updatedAt: share.note.updatedAt.toISOString(),
       authorId: share.note.ownerId,
       authorName: share.note.owner.displayName,
