@@ -8,6 +8,7 @@ import { TileGrid } from "@/components/binder/TileGrid";
 import { NoteViewModal } from "@/components/binder/NoteViewModal";
 import { NoteFormModal } from "@/components/binder/NoteFormModal";
 import { MdImportModal } from "@/components/binder/MdImportModal";
+import { DuplicateCheckerModal } from "@/components/binder/DuplicateCheckerModal";
 import { BulkMoveModal } from "@/components/binder/BulkMoveModal";
 import { BulkShareModal } from "@/components/binder/BulkShareModal";
 import { QuizModal, type QuizCard } from "@/components/binder/QuizModal";
@@ -37,6 +38,7 @@ type ModalState =
   | { type: "form"; noteId: string | null }
   | { type: "view-shared"; noteId: string }
   | { type: "import" }
+  | { type: "duplicates" }
   | { type: "quiz" }
   | { type: "bulk-move" }
   | { type: "bulk-share" }
@@ -442,6 +444,13 @@ export function BinderApp({
               </button>
               <button
                 type="button"
+                onClick={() => setModalState({ type: "duplicates" })}
+                className="min-h-[44px] rounded border border-line px-3.5 py-2.5 text-[13.5px] font-semibold text-ink transition-opacity hover:opacity-88"
+              >
+                Check duplicates
+              </button>
+              <button
+                type="button"
                 onClick={() => setModalState({ type: "form", noteId: null })}
                 className="min-h-[44px] rounded bg-ink px-4 py-2.5 text-[13.5px] font-semibold text-paper transition-opacity hover:opacity-88"
               >
@@ -626,6 +635,10 @@ export function BinderApp({
           onClose={closeModal}
           onImported={closeModal}
         />
+      )}
+
+      {modalState.type === "duplicates" && (
+        <DuplicateCheckerModal onClose={closeModal} />
       )}
 
       {modalState.type === "quiz" && (

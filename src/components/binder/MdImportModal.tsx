@@ -9,10 +9,8 @@ import {
   normalizeFocus,
   type ParsedFlashcard,
 } from "@/lib/mdFlashcards";
-import {
-  checkDuplicateFocuses,
-  importFlashcards,
-} from "@/lib/actions/mdImport";
+import { importFlashcards } from "@/lib/actions/mdImport";
+import { checkDuplicateFocuses } from "@/lib/actions/duplicates";
 import type { TopicSummaryDTO } from "@/lib/types";
 
 interface MdImportModalProps {
@@ -80,7 +78,9 @@ export function MdImportModal({
       const duplicateMap = new Map(
         duplicates.map((d) => [
           d.focus,
-          `${d.existingNoteTitle} (${d.existingTopic} / ${d.existingFolder})`,
+          `${d.existingNoteTitle} (${d.existingTopic} / ${d.existingFolder}${
+            d.existingOwnerName === "you" ? "" : `, shared by ${d.existingOwnerName}`
+          })`,
         ]),
       );
       setReviewCards(

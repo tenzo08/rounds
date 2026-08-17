@@ -5,7 +5,6 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { resolveFolderId } from "@/lib/server/notesShared";
-import { normalizeFocus } from "@/lib/mdFlashcards";
 
 async function requireUserId(): Promise<string> {
   const session = await auth();
@@ -20,46 +19,6 @@ const cardSchema = z.object({
   focus: z.string().trim().min(1).max(120),
   description: z.string().trim().min(1).max(20000),
 });
-
-export interface DuplicateMatch {
-  focus: string;
-  existingNoteTitle: string;
-  existingTopic: string;
-  existingFolder: string;
-}
-
-// Flags candidates whose focus term already exists somewhere in the
-// student's own binder — surfaced so they can decide, never auto-dropped.
-export async function checkDuplicateFocuses(
-  focuses: string[],
-): Promise<DuplicateMatch[]> {
-  const userId = await requireUserId();
-  const normalizedTargets = new Set(focuses.map(normalizeFocus));
-  if (normalizedTargets.size === 0) return [];
-
-  const existing = await prisma.note.findMany({
-    where: { ownerId: userId },
-    select: {
-      focus: true,
-      title: true,
-      folder: { select: { name: true, topic: { select: { name: true } } } },
-    },
-  });
-
-  const matches: DuplicateMatch[] = [];
-  for (const note of existing) {
-    const normalized = normalizeFocus(note.focus);
-    if (normalizedTargets.has(normalized)) {
-      matches.push({
-        focus: normalized,
-        existingNoteTitle: note.title,
-        existingTopic: note.folder.topic.name,
-        existingFolder: note.folder.name,
-      });
-    }
-  }
-  return matches;
-}
 
 export async function importFlashcards(
   topic: string,
