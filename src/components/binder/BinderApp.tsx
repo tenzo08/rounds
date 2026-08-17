@@ -338,8 +338,8 @@ export function BinderApp({
       />
 
       <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="shrink-0 px-4 pt-6 md:px-10 md:pt-8.5">
-        <div className="mb-4 flex flex-wrap items-end justify-between gap-5">
+      <div className="shrink-0 px-4 pt-4 md:px-10 md:pt-8.5">
+        <div className="mb-3 flex flex-wrap items-end justify-between gap-5 md:mb-4">
           <div className="min-w-0">
             {searchScope === "mine" && selection.type !== "all" && (
               <div className="mb-1 flex items-center gap-1.5 font-mono text-[11px] text-ink-soft">
@@ -377,7 +377,7 @@ export function BinderApp({
                 <button
                   type="button"
                   onClick={handleOpenScopeShare}
-                  className="min-h-[32px] rounded border border-line px-2.5 py-1 font-mono text-[10.5px] text-ink-soft uppercase transition-colors hover:border-ink hover:text-ink"
+                  className="min-h-[28px] rounded border border-line px-2 py-1 font-mono text-[10px] text-ink-soft uppercase transition-colors hover:border-ink hover:text-ink sm:min-h-[32px] sm:px-2.5 sm:text-[10.5px]"
                 >
                   {scopeShareLabel}
                 </button>
@@ -385,7 +385,7 @@ export function BinderApp({
                   <button
                     type="button"
                     onClick={() => handleDeleteTopic(selection.topic)}
-                    className="min-h-[32px] rounded border border-c-crit/40 px-2.5 py-1 font-mono text-[10.5px] text-c-crit uppercase transition-colors hover:border-c-crit hover:bg-c-crit/5"
+                    className="min-h-[28px] rounded border border-c-crit/40 px-2 py-1 font-mono text-[10px] text-c-crit uppercase transition-colors hover:border-c-crit hover:bg-c-crit/5 sm:min-h-[32px] sm:px-2.5 sm:text-[10.5px]"
                   >
                     Delete topic
                   </button>
@@ -393,7 +393,7 @@ export function BinderApp({
               </div>
             )}
           </div>
-          <div className="flex w-full flex-col gap-2.5 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:gap-2.5">
             <div className="relative w-full sm:w-[200px]">
               <svg
                 width="14"
@@ -412,16 +412,16 @@ export function BinderApp({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="search flashcards..."
-                className="w-full min-h-[44px] rounded border border-line bg-card py-2.5 pr-3.5 pl-8 font-mono text-[13px] text-ink outline-none focus:border-ink"
+                className="w-full min-h-[36px] rounded border border-line bg-card py-1.5 pr-3.5 pl-8 font-mono text-[13px] text-ink outline-none focus:border-ink sm:min-h-[44px] sm:py-2.5"
               />
             </div>
-            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+            <div className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap sm:items-center sm:gap-2.5">
               {searchScope === "mine" && (
                 <button
                   type="button"
                   onClick={toggleSelectMode}
                   className={
-                    "min-h-[44px] rounded border border-line px-3.5 py-2.5 text-[13.5px] font-semibold transition-opacity hover:opacity-88 " +
+                    "min-h-[34px] rounded border border-line px-2.5 py-1.5 text-[12px] font-semibold transition-opacity hover:opacity-88 sm:min-h-[44px] sm:px-3.5 sm:py-2.5 sm:text-[13.5px] " +
                     (isSelectMode ? "bg-ink text-paper" : "text-ink")
                   }
                 >
@@ -431,28 +431,28 @@ export function BinderApp({
               <button
                 type="button"
                 onClick={() => setModalState({ type: "quiz" })}
-                className="min-h-[44px] rounded border border-line px-3.5 py-2.5 text-[13.5px] font-semibold text-ink transition-opacity hover:opacity-88"
+                className="min-h-[34px] rounded border border-line px-2.5 py-1.5 text-[12px] font-semibold text-ink transition-opacity hover:opacity-88 sm:min-h-[44px] sm:px-3.5 sm:py-2.5 sm:text-[13.5px]"
               >
                 Quiz
               </button>
               <button
                 type="button"
                 onClick={() => setModalState({ type: "import" })}
-                className="min-h-[44px] rounded border border-line px-3.5 py-2.5 text-[13.5px] font-semibold text-ink transition-opacity hover:opacity-88"
+                className="min-h-[34px] rounded border border-line px-2.5 py-1.5 text-[12px] font-semibold text-ink transition-opacity hover:opacity-88 sm:min-h-[44px] sm:px-3.5 sm:py-2.5 sm:text-[13.5px]"
               >
                 Upload .md
               </button>
               <button
                 type="button"
                 onClick={() => setModalState({ type: "duplicates" })}
-                className="min-h-[44px] rounded border border-line px-3.5 py-2.5 text-[13.5px] font-semibold text-ink transition-opacity hover:opacity-88"
+                className="min-h-[34px] rounded border border-line px-2.5 py-1.5 text-[12px] font-semibold text-ink transition-opacity hover:opacity-88 sm:min-h-[44px] sm:px-3.5 sm:py-2.5 sm:text-[13.5px]"
               >
                 Check duplicates
               </button>
               <button
                 type="button"
                 onClick={() => setModalState({ type: "form", noteId: null })}
-                className="min-h-[44px] rounded bg-ink px-4 py-2.5 text-[13.5px] font-semibold text-paper transition-opacity hover:opacity-88"
+                className="min-h-[34px] rounded bg-ink px-2.5 py-1.5 text-[12px] font-semibold text-paper transition-opacity hover:opacity-88 sm:min-h-[44px] sm:px-4 sm:py-2.5 sm:text-[13.5px]"
               >
                 + New entry
               </button>
@@ -460,13 +460,13 @@ export function BinderApp({
           </div>
         </div>
 
-        <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="mb-3 flex flex-wrap items-center gap-2 md:mb-4">
           <div className="flex gap-1">
             <button
               type="button"
               onClick={() => setSearchScope("mine")}
               className={
-                "min-h-[32px] rounded px-3 py-1 font-mono text-[11px] tracking-[0.04em] uppercase transition-colors " +
+                "min-h-[28px] rounded px-2.5 py-1 font-mono text-[10.5px] tracking-[0.04em] uppercase transition-colors sm:min-h-[32px] sm:px-3 sm:text-[11px] " +
                 (searchScope === "mine"
                   ? "bg-ink text-paper"
                   : "border border-line text-ink-soft hover:bg-paper-grid")
@@ -478,7 +478,7 @@ export function BinderApp({
               type="button"
               onClick={() => setSearchScope("everywhere")}
               className={
-                "min-h-[32px] rounded px-3 py-1 font-mono text-[11px] tracking-[0.04em] uppercase transition-colors " +
+                "min-h-[28px] rounded px-2.5 py-1 font-mono text-[10.5px] tracking-[0.04em] uppercase transition-colors sm:min-h-[32px] sm:px-3 sm:text-[11px] " +
                 (searchScope === "everywhere"
                   ? "bg-ink text-paper"
                   : "border border-line text-ink-soft hover:bg-paper-grid")
@@ -489,21 +489,21 @@ export function BinderApp({
           </div>
 
           {isSelectMode && selectedIds.size > 0 && (
-            <div className="flex w-full flex-wrap items-center gap-2 rounded border border-line bg-paper-grid px-3 py-2 sm:w-auto">
+            <div className="flex w-full flex-wrap items-center gap-1.5 rounded border border-line bg-paper-grid px-2.5 py-1.5 sm:w-auto sm:gap-2 sm:px-3 sm:py-2">
               <span className="font-mono text-[11px] text-ink-soft">
                 {selectedIds.size} selected
               </span>
               <button
                 type="button"
                 onClick={() => setModalState({ type: "bulk-move" })}
-                className="min-h-[36px] rounded border border-line bg-card px-3 text-xs font-semibold text-ink hover:bg-paper"
+                className="min-h-[30px] rounded border border-line bg-card px-2.5 text-xs font-semibold text-ink hover:bg-paper sm:min-h-[36px] sm:px-3"
               >
                 Move
               </button>
               <button
                 type="button"
                 onClick={() => setModalState({ type: "bulk-share" })}
-                className="min-h-[36px] rounded border border-line bg-card px-3 text-xs font-semibold text-ink hover:bg-paper"
+                className="min-h-[30px] rounded border border-line bg-card px-2.5 text-xs font-semibold text-ink hover:bg-paper sm:min-h-[36px] sm:px-3"
               >
                 Share to group
               </button>
@@ -511,7 +511,7 @@ export function BinderApp({
                 type="button"
                 onClick={handleBulkDelete}
                 disabled={isPending}
-                className="min-h-[36px] rounded border border-line bg-card px-3 text-xs font-semibold text-c-crit hover:bg-paper disabled:opacity-50"
+                className="min-h-[30px] rounded border border-line bg-card px-2.5 text-xs font-semibold text-c-crit hover:bg-paper disabled:opacity-50 sm:min-h-[36px] sm:px-3"
               >
                 Delete
               </button>

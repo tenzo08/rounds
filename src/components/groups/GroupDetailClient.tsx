@@ -106,8 +106,8 @@ export function GroupDetailClient({
       />
 
       <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="shrink-0 px-4 pt-6 md:px-10 md:pt-8.5">
-        <div className="mb-3 flex flex-wrap items-start justify-between gap-5">
+      <div className="shrink-0 px-4 pt-4 md:px-10 md:pt-8.5">
+        <div className="mb-3 flex flex-wrap items-start justify-between gap-3 md:gap-5">
           <div className="min-w-0">
             <h2 className="m-0 mb-1 font-serif text-[22px] text-ink">
               {group.name}
@@ -120,18 +120,18 @@ export function GroupDetailClient({
                 : "You are a member"}
             </p>
           </div>
-          <div className="flex shrink-0 gap-2">
+          <div className="flex shrink-0 gap-1.5 sm:gap-2">
             <button
               type="button"
               onClick={() => setIsQuizOpen(true)}
-              className="min-h-[44px] rounded border border-line px-4 py-2.5 text-[13.5px] font-semibold text-ink transition-opacity hover:opacity-88"
+              className="min-h-[34px] rounded border border-line px-2.5 py-1.5 text-[12px] font-semibold text-ink transition-opacity hover:opacity-88 sm:min-h-[44px] sm:px-4 sm:py-2.5 sm:text-[13.5px]"
             >
               Quiz
             </button>
             <button
               type="button"
               onClick={() => setIsSettingsOpen(true)}
-              className="min-h-[44px] rounded border border-line px-4 py-2.5 text-[13.5px] font-semibold text-ink transition-opacity hover:opacity-88"
+              className="min-h-[34px] rounded border border-line px-2.5 py-1.5 text-[12px] font-semibold text-ink transition-opacity hover:opacity-88 sm:min-h-[44px] sm:px-4 sm:py-2.5 sm:text-[13.5px]"
             >
               Settings
             </button>
