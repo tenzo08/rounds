@@ -8,6 +8,7 @@ import { NoteCard } from "@/components/binder/NoteCard";
 import { TileGrid } from "@/components/binder/TileGrid";
 import { GroupNoteViewModal } from "@/components/groups/GroupNoteViewModal";
 import { QuizModal, type QuizCard } from "@/components/binder/QuizModal";
+import { IdleLogout } from "@/components/IdleLogout";
 import { signOutAction } from "@/lib/actions/auth";
 import { topicColor } from "@/lib/topics";
 import type {
@@ -92,6 +93,7 @@ export function GroupDetailClient({
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden md:flex-row">
+      <IdleLogout />
       <GroupsSidebar
         groups={groups}
         activeGroupId={group.id}

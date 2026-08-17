@@ -52,20 +52,6 @@ export function AppSidebarShell({
     setIsDrawerOpen(false);
   }
 
-  const brandBlock = (
-    <div className="mb-2.5 border-b border-[#333d47] px-[22px] pb-[26px]">
-      <p className="m-0 mb-1.5 font-mono text-[10.5px] tracking-[0.14em] text-[#8A9199] uppercase">
-        Student Resource Binder
-      </p>
-      <h1 className="m-0 font-serif text-[26px] leading-[1.15] font-bold text-white">
-        The Rounds
-      </h1>
-      <p className="m-0 mt-2 text-xs leading-[1.5] text-[#9AA1A8]">
-        Chart what you learn, rotation by rotation.
-      </p>
-    </div>
-  );
-
   const navLinks = (
     <nav className="flex gap-1 px-[18px] pb-2">
       <Link
@@ -180,7 +166,6 @@ export function AppSidebarShell({
             >
               ×
             </button>
-            {brandBlock}
             {footer}
             {navLinks}
             <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
@@ -190,7 +175,6 @@ export function AppSidebarShell({
 
       {/* Desktop sidebar */}
       <aside className="hidden bg-binder py-7 text-binder-text md:sticky md:top-0 md:flex md:h-screen md:w-[220px] md:shrink-0 md:flex-col">
-        {brandBlock}
         {footer}
         {navLinks}
         <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>

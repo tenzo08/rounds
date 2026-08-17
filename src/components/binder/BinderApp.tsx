@@ -12,6 +12,7 @@ import { BulkMoveModal } from "@/components/binder/BulkMoveModal";
 import { BulkShareModal } from "@/components/binder/BulkShareModal";
 import { QuizModal, type QuizCard } from "@/components/binder/QuizModal";
 import { GroupNoteViewModal } from "@/components/groups/GroupNoteViewModal";
+import { IdleLogout } from "@/components/IdleLogout";
 import { signOutAction } from "@/lib/actions/auth";
 import { topicColor } from "@/lib/topics";
 import {
@@ -37,7 +38,8 @@ type ModalState =
   | { type: "import" }
   | { type: "quiz" }
   | { type: "bulk-move" }
-  | { type: "bulk-share" };
+  | { type: "bulk-share" }
+  | { type: "scope-share" };
 
 type SearchScope = "mine" | "everywhere";
 
@@ -93,6 +95,7 @@ export function BinderApp({
   const [isPending, startTransition] = useTransition();
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [scopeShareIds, setScopeShareIds] = useState<string[]>([]);
 
   const browsingTopic =
     selection.type === "topic" && searchQuery.trim().length === 0
@@ -149,14 +152,29 @@ export function BinderApp({
   const defaultTopic = selection.type !== "all" ? selection.topic : "";
   const defaultFolder = selection.type === "folder" ? selection.folder : "";
 
-  const quizCards: QuizCard[] = notes.map((n) => ({
-    id: n.id,
-    title: n.title,
-    focus: n.focus,
-    description: n.description,
-    topic: n.topic,
-    folder: n.folder,
-  }));
+  // In "Everywhere" scope the quiz should draw from the same pool the
+  // student is currently looking at — their own notes plus whatever's
+  // shared with them — not just their own binder.
+  const quizCards: QuizCard[] = useMemo(() => {
+    const own = notes.map((n) => ({
+      id: n.id,
+      title: n.title,
+      focus: n.focus,
+      description: n.description,
+      topic: n.topic,
+      folder: n.folder,
+    }));
+    if (searchScope !== "everywhere") return own;
+    const shared = sharedWithMe.map((n) => ({
+      id: n.id,
+      title: n.title,
+      focus: n.focus,
+      description: n.description,
+      topic: n.topic,
+      folder: n.folder,
+    }));
+    return [...own, ...shared];
+  }, [notes, sharedWithMe, searchScope]);
 
   function closeModal() {
     setModalState({ type: "closed" });
@@ -243,6 +261,29 @@ export function BinderApp({
     });
   }
 
+  function handleOpenScopeShare() {
+    const ids =
+      selection.type === "all"
+        ? notes.map((n) => n.id)
+        : selection.type === "topic"
+          ? notes.filter((n) => n.topic === selection.topic).map((n) => n.id)
+          : notes
+              .filter(
+                (n) => n.topic === selection.topic && n.folder === selection.folder,
+              )
+              .map((n) => n.id);
+    if (ids.length === 0) return;
+    setScopeShareIds(ids);
+    setModalState({ type: "scope-share" });
+  }
+
+  const scopeShareLabel =
+    selection.type === "all"
+      ? "Share all to group"
+      : selection.type === "topic"
+        ? "Share topic to group"
+        : "Share folder to group";
+
   function handleDropNoteOnFolder(noteId: string, topic: string, folder: string) {
     const source = notes.find((n) => n.id === noteId);
     if (!source) return;
@@ -264,6 +305,7 @@ export function BinderApp({
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden md:flex-row">
+      <IdleLogout />
       <Sidebar
         selection={selection}
         onSelect={(next) => {
@@ -286,10 +328,42 @@ export function BinderApp({
       <div className="shrink-0 px-4 pt-6 md:px-10 md:pt-8.5">
         <div className="mb-4 flex flex-wrap items-end justify-between gap-5">
           <div className="min-w-0">
+            {searchScope === "mine" && selection.type !== "all" && (
+              <div className="mb-1 flex items-center gap-1.5 font-mono text-[11px] text-ink-soft">
+                <button
+                  type="button"
+                  onClick={() => setSelection({ type: "all" })}
+                  className="hover:text-ink hover:underline"
+                >
+                  ← All entries
+                </button>
+                {selection.type === "folder" && (
+                  <>
+                    <span>/</span>
+                    <button
+                      type="button"
+                      onClick={() => setSelection({ type: "topic", topic: selection.topic })}
+                      className="hover:text-ink hover:underline"
+                    >
+                      {selection.topic}
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
             <div className="flex items-center gap-2.5">
               <h2 className="m-0 mb-1 truncate font-serif text-[22px] text-ink">
                 {searchScope === "everywhere" ? "Search everywhere" : viewTitle}
               </h2>
+              {searchScope === "mine" && (
+                <button
+                  type="button"
+                  onClick={handleOpenScopeShare}
+                  className="mb-1 shrink-0 font-mono text-[10.5px] text-ink-soft uppercase hover:text-ink hover:underline"
+                >
+                  {scopeShareLabel}
+                </button>
+              )}
               {searchScope === "mine" &&
                 (selection.type === "topic" || selection.type === "folder") && (
                   <button
@@ -544,7 +618,7 @@ export function BinderApp({
 
       {modalState.type === "quiz" && (
         <QuizModal
-          title="My Binder"
+          title={searchScope === "everywhere" ? "Everywhere" : "My Binder"}
           cards={quizCards}
           onClose={closeModal}
         />
@@ -573,6 +647,15 @@ export function BinderApp({
             setIsSelectMode(false);
             closeModal();
           }}
+        />
+      )}
+
+      {modalState.type === "scope-share" && (
+        <BulkShareModal
+          noteIds={scopeShareIds}
+          groups={groups}
+          onClose={closeModal}
+          onShared={closeModal}
         />
       )}
     </div>
