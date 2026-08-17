@@ -61,6 +61,8 @@ export function normalizeFocus(focus: string): string {
 
 export const FLASHCARD_IMPORT_PROMPT = `Please create a markdown flashcard file based on the PDF I've attached to this conversation.
 
+IMPORTANT — you must actually create and give me a downloadable .md file. Do not just describe the flashcards, do not summarize the PDF in plain prose, and do not ask me follow-up questions first. If you have a file-creation/code-interpreter tool available, use it now to generate a real .md file and give me the download link. If you do NOT have that ability, then instead output the complete raw markdown directly in your reply — nothing before it, nothing after it, no extra commentary, no explanation of what you did — just the exact markdown content itself, so I can copy it and save it as a .md file myself.
+
 Your job is extraction, not summarization. Go through the PDF systematically — section by section, paragraph by paragraph — and pull out every important word: every named term, drug, lab value, sign/symptom, procedure, anatomical structure, classification, and concept a nursing student could be tested on. Do not filter by "importance" beyond that; if the material defines it, names it, or explains what it does, it earns its own card. Do not skip terms just because they only appear in one sentence — a one-sentence definition is still a full card.
 
 ATOMICITY IS THE MOST IMPORTANT RULE: each card covers exactly ONE word or phrase. Never combine two or more terms into a single card, even if the source material discusses them together in the same sentence or paragraph.
