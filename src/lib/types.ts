@@ -2,9 +2,9 @@ import type { GroupRole } from "@/generated/prisma/client";
 
 export interface NoteDTO {
   id: string;
-  title: string;
   focus: string;
   description: string;
+  subject: string;
   topic: string;
   folder: string;
   createdAt: string;
@@ -21,6 +21,12 @@ export interface TopicSummaryDTO {
   name: string;
   count: number;
   folders: FolderSummaryDTO[];
+}
+
+export interface SubjectSummaryDTO {
+  name: string;
+  count: number;
+  topics: TopicSummaryDTO[];
 }
 
 export interface GroupSummaryDTO {
@@ -59,9 +65,9 @@ export interface ShareableGroupDTO {
 
 export interface GroupFeedNoteDTO {
   id: string;
-  title: string;
   focus: string;
   description: string;
+  subject: string;
   topic: string;
   folder: string;
   updatedAt: string;

@@ -1,29 +1,26 @@
 export interface ParsedFlashcard {
-  title: string;
   focus: string;
   description: string;
 }
 
 // Parses the flashcard markdown format an external LLM produces from
-// FLASHCARD_IMPORT_PROMPT below: repeated "## Title" sections, each with a
-// "Focus:" line and a "Description:" line (description may span multiple
-// lines/paragraphs until the next "## " heading). Lenient about missing
-// labels so minor LLM formatting drift still parses into something usable.
+// FLASHCARD_IMPORT_PROMPT below: repeated blocks of a "Focus:" line and a
+// "Description:" line (description may span multiple lines/paragraphs),
+// separated by a "---" line. Lenient about a missing separator too — a new
+// "Focus:" line on its own is enough to start the next card — so minor LLM
+// formatting drift still parses into something usable.
 export function parseFlashcardMarkdown(markdown: string): ParsedFlashcard[] {
   const lines = markdown.replace(/\r\n/g, "\n").split("\n");
   const cards: ParsedFlashcard[] = [];
-  let current: { title: string; focus: string; descLines: string[] } | null =
-    null;
+  let current: { focus: string; descLines: string[] } | null = null;
 
   function flush() {
     if (!current) return;
-    const title = current.title.trim();
     const focus = current.focus.trim();
     const description = current.descLines.join("\n").trim();
-    if (title && (focus || description)) {
+    if (focus || description) {
       cards.push({
-        title,
-        focus: focus || title,
+        focus: focus || description,
         description: description || focus,
       });
     }
@@ -31,19 +28,20 @@ export function parseFlashcardMarkdown(markdown: string): ParsedFlashcard[] {
   }
 
   for (const raw of lines) {
-    const heading = raw.match(/^##\s+(.+)$/);
-    if (heading) {
+    if (raw.trim() === "---") {
       flush();
-      current = { title: heading[1], focus: "", descLines: [] };
+      continue;
+    }
+
+    const focusMatch = raw.match(/^Focus:\s*(.*)$/i);
+    if (focusMatch) {
+      if (current && current.focus) flush();
+      if (!current) current = { focus: "", descLines: [] };
+      current.focus = focusMatch[1];
       continue;
     }
     if (!current) continue;
 
-    const focusMatch = raw.match(/^Focus:\s*(.*)$/i);
-    if (focusMatch && !current.focus) {
-      current.focus = focusMatch[1];
-      continue;
-    }
     const descMatch = raw.match(/^Description:\s*(.*)$/i);
     if (descMatch) {
       if (descMatch[1]) current.descLines.push(descMatch[1]);
@@ -82,10 +80,12 @@ Apply these three rules to every card:
 2. DON'T GIVE AWAY THE ANSWER: never state the focus term itself (or an obvious variant of it) inside its own Description — describe what it is/does without naming it. (Focus "Gerontological Nursing" → description should NOT start with "Gerontological nursing is/focuses on..."; instead describe the specialty without saying its name.)
 3. SELF-CONTAINED: each description should make sense on its own, in 2-5 sentences, without needing any other card.
 
-Output ONLY this markdown format, repeated once per term, nothing else before or after it (no intro, no summary, no explanation):
+Output ONLY this markdown format, repeated once per term and separated by a line containing just "---", nothing else before or after it (no intro, no summary, no explanation, no card titles or headings):
 
-## <card title>
 Focus: <the term to memorize>
+Description: <2-5 sentences explaining it, per rules 2 and 3 above>
+---
+Focus: <the next term to memorize>
 Description: <2-5 sentences explaining it, per rules 2 and 3 above>
 
 If you have a file-creation/code-interpreter tool available, use it to generate an actual downloadable .md file and give me the link. If you don't have that ability, output the complete raw markdown directly in your reply instead, with nothing before or after it, so I can copy it and save it as a .md file myself.`;

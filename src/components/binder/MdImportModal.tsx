@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { ModalShell } from "@/components/binder/ModalShell";
-import { TopicFolderFields } from "@/components/binder/TopicFolderFields";
+import { SubjectTopicFolderFields } from "@/components/binder/SubjectTopicFolderFields";
 import {
   FLASHCARD_IMPORT_PROMPT,
   parseFlashcardMarkdown,
@@ -11,10 +11,11 @@ import {
 } from "@/lib/mdFlashcards";
 import { importFlashcards } from "@/lib/actions/mdImport";
 import { checkDuplicateFocuses } from "@/lib/actions/duplicates";
-import type { TopicSummaryDTO } from "@/lib/types";
+import type { SubjectSummaryDTO } from "@/lib/types";
 
 interface MdImportModalProps {
-  topics: TopicSummaryDTO[];
+  subjects: SubjectSummaryDTO[];
+  defaultSubject: string;
   defaultTopic: string;
   defaultFolder: string;
   onClose: () => void;
@@ -32,12 +33,14 @@ function getErrorMessage(error: unknown): string {
 }
 
 export function MdImportModal({
-  topics,
+  subjects,
+  defaultSubject,
   defaultTopic,
   defaultFolder,
   onClose,
   onImported,
 }: MdImportModalProps) {
+  const [subject, setSubject] = useState(defaultSubject);
   const [topic, setTopic] = useState(defaultTopic);
   const [folder, setFolder] = useState(defaultFolder);
   const [copyLabel, setCopyLabel] = useState("Copy prompt");
@@ -78,9 +81,9 @@ export function MdImportModal({
       const duplicateMap = new Map(
         duplicates.map((d) => [
           d.focus,
-          `${d.existingNoteTitle} (${d.existingTopic} / ${d.existingFolder}${
+          `${d.existingSubject} / ${d.existingTopic} / ${d.existingFolder}${
             d.existingOwnerName === "you" ? "" : `, shared by ${d.existingOwnerName}`
-          })`,
+          }`,
         ]),
       );
       setReviewCards(
@@ -107,10 +110,11 @@ export function MdImportModal({
 
   async function handleImport() {
     if (!reviewCards) return;
+    const trimmedSubject = subject.trim();
     const trimmedTopic = topic.trim();
     const trimmedFolder = folder.trim();
-    if (!trimmedTopic || !trimmedFolder) {
-      setError("Pick a topic and folder for these flashcards first.");
+    if (!trimmedSubject || !trimmedTopic || !trimmedFolder) {
+      setError("Pick a subject, topic, and folder for these flashcards first.");
       return;
     }
     const selected = reviewCards.filter((c) => c.include);
@@ -122,13 +126,10 @@ export function MdImportModal({
     setError(null);
     try {
       await importFlashcards(
+        trimmedSubject,
         trimmedTopic,
         trimmedFolder,
-        selected.map(({ title, focus, description }) => ({
-          title,
-          focus,
-          description,
-        })),
+        selected.map(({ focus, description }) => ({ focus, description })),
       );
       onImported();
     } catch (err) {
@@ -164,10 +165,12 @@ export function MdImportModal({
       </div>
 
       <div className="mt-4">
-        <TopicFolderFields
-          topics={topics}
+        <SubjectTopicFolderFields
+          subjects={subjects}
+          subject={subject}
           topic={topic}
           folder={folder}
+          onSubjectChange={setSubject}
           onTopicChange={setTopic}
           onFolderChange={setFolder}
         />
@@ -213,7 +216,7 @@ export function MdImportModal({
               />
               <div className="min-w-0 flex-1">
                 <p className="m-0 truncate text-[13px] font-semibold text-ink">
-                  {card.title} — {card.focus}
+                  {card.focus}
                 </p>
                 <p className="m-0 line-clamp-2 text-[12px] text-ink-soft">
                   {card.description}

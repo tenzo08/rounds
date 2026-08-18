@@ -11,7 +11,7 @@ import { QuizModal, type QuizCard } from "@/components/binder/QuizModal";
 import { GroupAutoRefresh } from "@/components/groups/GroupAutoRefresh";
 import { IdleLogout } from "@/components/IdleLogout";
 import { signOutAction } from "@/lib/actions/auth";
-import { topicColor } from "@/lib/topics";
+import { subjectColor } from "@/lib/topics";
 import type {
   GroupDetailDTO,
   GroupFeedNoteDTO,
@@ -30,8 +30,9 @@ interface GroupDetailClientProps {
 
 type GroupSelection =
   | { type: "all" }
-  | { type: "topic"; topic: string }
-  | { type: "folder"; topic: string; folder: string };
+  | { type: "subject"; subject: string }
+  | { type: "topic"; subject: string; topic: string }
+  | { type: "folder"; subject: string; topic: string; folder: string };
 
 export function GroupDetailClient({
   group,
@@ -56,39 +57,54 @@ export function GroupDetailClient({
 
   const quizCards: QuizCard[] = feedNotes.map((n) => ({
     id: n.id,
-    title: n.title,
     focus: n.focus,
     description: n.description,
+    subject: n.subject,
     topic: n.topic,
     folder: n.folder,
   }));
 
-  // Notes are shared in from many different owners' personal topic/folder
-  // structures — there's no shared Topic/Folder table to join against here,
-  // so the browsing tree is built straight from whatever topic/folder names
-  // are already attached to each shared note.
-  const topicTree = useMemo(() => {
-    const byTopic = new Map<string, Map<string, number>>();
+  // Notes are shared in from many different owners' personal subject/topic/
+  // folder structures — there's no shared Subject/Topic/Folder table to join
+  // against here, so the browsing tree is built straight from whatever
+  // subject/topic/folder names are already attached to each shared note.
+  const subjectTree = useMemo(() => {
+    const bySubject = new Map<string, Map<string, Map<string, number>>>();
     for (const note of feedNotes) {
-      if (!byTopic.has(note.topic)) byTopic.set(note.topic, new Map());
-      const folders = byTopic.get(note.topic)!;
+      if (!bySubject.has(note.subject)) bySubject.set(note.subject, new Map());
+      const topics = bySubject.get(note.subject)!;
+      if (!topics.has(note.topic)) topics.set(note.topic, new Map());
+      const folders = topics.get(note.topic)!;
       folders.set(note.folder, (folders.get(note.folder) ?? 0) + 1);
     }
-    return Array.from(byTopic.entries())
-      .map(([topic, folders]) => ({
-        topic,
-        count: Array.from(folders.values()).reduce((a, b) => a + b, 0),
-        folders: Array.from(folders.entries())
-          .map(([folder, count]) => ({ folder, count }))
-          .sort((a, b) => a.folder.localeCompare(b.folder)),
+    return Array.from(bySubject.entries())
+      .map(([subject, topics]) => ({
+        subject,
+        count: Array.from(topics.values()).reduce(
+          (sum, folders) =>
+            sum + Array.from(folders.values()).reduce((a, b) => a + b, 0),
+          0,
+        ),
+        topics: Array.from(topics.entries())
+          .map(([topic, folders]) => ({
+            topic,
+            count: Array.from(folders.values()).reduce((a, b) => a + b, 0),
+            folders: Array.from(folders.entries())
+              .map(([folder, count]) => ({ folder, count }))
+              .sort((a, b) => a.folder.localeCompare(b.folder)),
+          }))
+          .sort((a, b) => a.topic.localeCompare(b.topic)),
       }))
-      .sort((a, b) => a.topic.localeCompare(b.topic));
+      .sort((a, b) => a.subject.localeCompare(b.subject));
   }, [feedNotes]);
 
   const visibleNotes =
     selection.type === "folder"
       ? feedNotes.filter(
-          (n) => n.topic === selection.topic && n.folder === selection.folder,
+          (n) =>
+            n.subject === selection.subject &&
+            n.topic === selection.topic &&
+            n.folder === selection.folder,
         )
       : [];
 
@@ -147,14 +163,34 @@ export function GroupDetailClient({
               onClick={() => setSelection({ type: "all" })}
               className="hover:text-ink hover:underline"
             >
-              All topics
+              All subjects
             </button>
+            {(selection.type === "topic" || selection.type === "folder") && (
+              <>
+                <span>/</span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSelection({ type: "subject", subject: selection.subject })
+                  }
+                  className="hover:text-ink hover:underline"
+                >
+                  {selection.subject}
+                </button>
+              </>
+            )}
             {selection.type === "folder" && (
               <>
                 <span>/</span>
                 <button
                   type="button"
-                  onClick={() => setSelection({ type: "topic", topic: selection.topic })}
+                  onClick={() =>
+                    setSelection({
+                      type: "topic",
+                      subject: selection.subject,
+                      topic: selection.topic,
+                    })
+                  }
                   className="hover:text-ink hover:underline"
                 >
                   {selection.topic}
@@ -163,7 +199,11 @@ export function GroupDetailClient({
             )}
             <span>/</span>
             <span className="text-ink">
-              {selection.type === "topic" ? selection.topic : selection.folder}
+              {selection.type === "subject"
+                ? selection.subject
+                : selection.type === "topic"
+                  ? selection.topic
+                  : selection.folder}
             </span>
           </div>
         )}
@@ -177,29 +217,52 @@ export function GroupDetailClient({
         ) : selection.type === "all" ? (
           <TileGrid
             countLabel="cards"
-            items={topicTree.map((t) => ({
-              key: t.topic,
-              label: t.topic,
-              count: t.count,
-              color: topicColor(t.topic),
+            items={subjectTree.map((s) => ({
+              key: s.subject,
+              label: s.subject,
+              count: s.count,
+              color: subjectColor(s.subject),
             }))}
-            onSelect={(topic) => setSelection({ type: "topic", topic })}
+            onSelect={(subject) => setSelection({ type: "subject", subject })}
+          />
+        ) : selection.type === "subject" ? (
+          <TileGrid
+            countLabel="cards"
+            items={
+              subjectTree
+                .find((s) => s.subject === selection.subject)
+                ?.topics.map((t) => ({
+                  key: t.topic,
+                  label: t.topic,
+                  count: t.count,
+                  color: subjectColor(selection.subject),
+                })) ?? []
+            }
+            onSelect={(topic) =>
+              setSelection({ type: "topic", subject: selection.subject, topic })
+            }
           />
         ) : selection.type === "topic" ? (
           <TileGrid
             countLabel="cards"
             items={
-              topicTree
-                .find((t) => t.topic === selection.topic)
+              subjectTree
+                .find((s) => s.subject === selection.subject)
+                ?.topics.find((t) => t.topic === selection.topic)
                 ?.folders.map((f) => ({
                   key: f.folder,
                   label: f.folder,
                   count: f.count,
-                  color: topicColor(selection.topic),
+                  color: subjectColor(selection.subject),
                 })) ?? []
             }
             onSelect={(folder) =>
-              setSelection({ type: "folder", topic: selection.topic, folder })
+              setSelection({
+                type: "folder",
+                subject: selection.subject,
+                topic: selection.topic,
+                folder,
+              })
             }
           />
         ) : (

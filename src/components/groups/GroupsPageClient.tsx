@@ -69,6 +69,7 @@ export function GroupsPageClient({
           </div>
           <button
             type="button"
+            data-tour="create-group-button"
             onClick={() => setIsModalOpen(true)}
             className="rounded bg-ink px-4 py-2.5 text-[13.5px] font-semibold text-paper transition-opacity hover:opacity-88"
           >

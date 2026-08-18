@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { EditProfileModal } from "@/components/EditProfileModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { TourOverlay } from "@/components/tour/TourOverlay";
 
 interface AppSidebarShellProps {
   activeNav: "binder" | "groups";
@@ -24,6 +25,16 @@ function HamburgerIcon() {
   );
 }
 
+function HelpIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+      <path d="M12 17h.01" />
+    </svg>
+  );
+}
+
 export function AppSidebarShell({
   activeNav,
   userName,
@@ -34,6 +45,7 @@ export function AppSidebarShell({
 }: AppSidebarShellProps) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [isTourOpen, setIsTourOpen] = useState(false);
 
   useEffect(() => {
     if (!isDrawerOpen) return;
@@ -59,7 +71,7 @@ export function AppSidebarShell({
   );
 
   const navLinks = (
-    <nav className="flex gap-1 px-[18px] pb-2">
+    <nav data-tour="nav-links" className="flex gap-1 px-[18px] pb-2">
       <Link
         href="/"
         onClick={closeDrawer}
@@ -120,12 +132,24 @@ export function AppSidebarShell({
       <div className="mt-2.5 flex items-center justify-between">
         <button
           type="button"
+          data-tour="edit-profile-button"
           onClick={() => setIsEditProfileOpen(true)}
           className="rounded border border-binder-text/25 px-2.5 py-1 font-mono text-[10.5px] text-[#9AA1A8] uppercase transition-colors hover:border-binder-text/50 hover:bg-binder-soft hover:text-binder-text"
         >
           Edit profile
         </button>
-        <ThemeToggle />
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            data-tour="help-button"
+            onClick={() => setIsTourOpen(true)}
+            aria-label="Open help tour"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded text-binder-text/70 transition-colors hover:bg-binder-soft hover:text-binder-text"
+          >
+            <HelpIcon />
+          </button>
+          <ThemeToggle />
+        </div>
       </div>
     </div>
   );
@@ -204,6 +228,8 @@ export function AppSidebarShell({
           onClose={() => setIsEditProfileOpen(false)}
         />
       )}
+
+      {isTourOpen && <TourOverlay onClose={() => setIsTourOpen(false)} />}
     </>
   );
 }

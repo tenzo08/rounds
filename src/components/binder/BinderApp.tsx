@@ -16,21 +16,25 @@ import { GroupNoteViewModal } from "@/components/groups/GroupNoteViewModal";
 import { IdleLogout } from "@/components/IdleLogout";
 import { OnboardingModal } from "@/components/OnboardingModal";
 import { signOutAction } from "@/lib/actions/auth";
-import { topicColor } from "@/lib/topics";
+import { subjectColor } from "@/lib/topics";
 import {
   createNote,
   deleteNote,
   updateNote,
   bulkDeleteNotes,
+  deleteSubject,
   deleteTopic,
+  deleteFolder,
+  renameSubject,
   renameTopic,
+  renameFolder,
   type NoteInput,
 } from "@/lib/actions/notes";
 import type {
   GroupSummaryDTO,
   NoteDTO,
   SharedWithMeNoteDTO,
-  TopicSummaryDTO,
+  SubjectSummaryDTO,
 } from "@/lib/types";
 
 type ModalState =
@@ -49,7 +53,7 @@ type SearchScope = "mine" | "everywhere";
 
 interface BinderAppProps {
   notes: NoteDTO[];
-  topics: TopicSummaryDTO[];
+  subjects: SubjectSummaryDTO[];
   sharedWithMe: SharedWithMeNoteDTO[];
   groups: GroupSummaryDTO[];
   userName: string;
@@ -63,29 +67,31 @@ function getErrorMessage(error: unknown): string {
   return "Something went wrong. Please try again.";
 }
 
-function matchesQuery(
-  query: string,
-  title: string,
-  focus: string,
-  description: string,
-): boolean {
+function matchesQuery(query: string, focus: string, description: string): boolean {
   if (!query) return true;
-  const haystack = `${title} ${focus} ${description}`.toLowerCase();
+  const haystack = `${focus} ${description}`.toLowerCase();
   return haystack.includes(query);
 }
 
 function matchesSelection(
-  note: { topic: string; folder: string },
+  note: { subject: string; topic: string; folder: string },
   selection: ActiveSelection,
 ): boolean {
   if (selection.type === "all") return true;
-  if (selection.type === "topic") return note.topic === selection.topic;
-  return note.topic === selection.topic && note.folder === selection.folder;
+  if (selection.type === "subject") return note.subject === selection.subject;
+  if (selection.type === "topic") {
+    return note.subject === selection.subject && note.topic === selection.topic;
+  }
+  return (
+    note.subject === selection.subject &&
+    note.topic === selection.topic &&
+    note.folder === selection.folder
+  );
 }
 
 export function BinderApp({
   notes,
-  topics,
+  subjects,
   sharedWithMe,
   groups,
   userName,
@@ -117,26 +123,29 @@ export function BinderApp({
     return () => document.removeEventListener("pointerdown", handlePointerDown);
   }, [isMoreOpen]);
 
+  const noSearchQuery = searchQuery.trim().length === 0;
+  const browsingSubject =
+    selection.type === "subject" && noSearchQuery ? selection.subject : null;
   const browsingTopic =
-    selection.type === "topic" && searchQuery.trim().length === 0
-      ? selection.topic
+    selection.type === "topic" && noSearchQuery
+      ? { subject: selection.subject, topic: selection.topic }
       : null;
 
   const filteredNotes = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     return notes.filter((note) => {
       if (!matchesSelection(note, selection)) return false;
-      return matchesQuery(query, note.title, note.focus, note.description);
+      return matchesQuery(query, note.focus, note.description);
     });
   }, [notes, selection, searchQuery]);
 
   const everywhereResults = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     const own = notes
-      .filter((n) => matchesQuery(query, n.title, n.focus, n.description))
+      .filter((n) => matchesQuery(query, n.focus, n.description))
       .map((n) => ({ kind: "own" as const, note: n }));
     const shared = sharedWithMe
-      .filter((n) => matchesQuery(query, n.title, n.focus, n.description))
+      .filter((n) => matchesQuery(query, n.focus, n.description))
       .map((n) => ({ kind: "shared" as const, note: n }));
     return [...own, ...shared].sort((a, b) =>
       b.note.updatedAt.localeCompare(a.note.updatedAt),
@@ -146,15 +155,19 @@ export function BinderApp({
   const viewTitle =
     selection.type === "all"
       ? "All entries"
-      : selection.type === "topic"
-        ? selection.topic
-        : `${selection.topic} / ${selection.folder}`;
+      : selection.type === "subject"
+        ? selection.subject
+        : selection.type === "topic"
+          ? `${selection.subject} / ${selection.topic}`
+          : `${selection.subject} / ${selection.topic} / ${selection.folder}`;
   const viewSub =
     selection.type === "all"
-      ? "Every flashcard across every topic."
-      : selection.type === "topic"
-        ? "Pick a folder to see its flashcards."
-        : `Flashcards in ${selection.folder}.`;
+      ? "Every flashcard across every subject."
+      : selection.type === "subject"
+        ? "Pick a topic to see its folders."
+        : selection.type === "topic"
+          ? "Pick a folder to see its flashcards."
+          : `Flashcards in ${selection.folder}.`;
 
   const viewingNote =
     modalState.type === "view"
@@ -169,7 +182,11 @@ export function BinderApp({
       ? (notes.find((n) => n.id === modalState.noteId) ?? null)
       : null;
 
-  const defaultTopic = selection.type !== "all" ? selection.topic : "";
+  const defaultSubject = selection.type !== "all" ? selection.subject : "";
+  const defaultTopic =
+    selection.type === "topic" || selection.type === "folder"
+      ? selection.topic
+      : "";
   const defaultFolder = selection.type === "folder" ? selection.folder : "";
 
   // In "Everywhere" scope the quiz should draw from the same pool the
@@ -178,18 +195,18 @@ export function BinderApp({
   const quizCards: QuizCard[] = useMemo(() => {
     const own = notes.map((n) => ({
       id: n.id,
-      title: n.title,
       focus: n.focus,
       description: n.description,
+      subject: n.subject,
       topic: n.topic,
       folder: n.folder,
     }));
     if (searchScope !== "everywhere") return own;
     const shared = sharedWithMe.map((n) => ({
       id: n.id,
-      title: n.title,
       focus: n.focus,
       description: n.description,
+      subject: n.subject,
       topic: n.topic,
       folder: n.folder,
     }));
@@ -262,53 +279,159 @@ export function BinderApp({
     });
   }
 
-  function handleRenameTopic(topic: string) {
-    const nextName = window.prompt(`Rename "${topic}" to:`, topic)?.trim();
-    if (!nextName || nextName === topic) return;
-    startTransition(async () => {
-      try {
-        await renameTopic(topic, nextName);
-        setSelection((prev) =>
-          (prev.type === "topic" || prev.type === "folder") && prev.topic === topic
-            ? { ...prev, topic: nextName }
-            : prev,
-        );
-      } catch (error) {
-        setActionError(getErrorMessage(error));
-      }
-    });
+  // The three-dot menu's rename/delete actions target whichever level is
+  // currently being browsed (Subject/Topic/Folder) — same window.prompt/
+  // window.confirm pattern either way, just resolving a longer ancestor
+  // path the deeper the current selection is.
+  function handleRename() {
+    if (selection.type === "subject") {
+      const nextName = window
+        .prompt(`Rename "${selection.subject}" to:`, selection.subject)
+        ?.trim();
+      if (!nextName || nextName === selection.subject) return;
+      startTransition(async () => {
+        try {
+          await renameSubject(selection.subject, nextName);
+          setSelection({ type: "subject", subject: nextName });
+        } catch (error) {
+          setActionError(getErrorMessage(error));
+        }
+      });
+    } else if (selection.type === "topic") {
+      const nextName = window
+        .prompt(`Rename "${selection.topic}" to:`, selection.topic)
+        ?.trim();
+      if (!nextName || nextName === selection.topic) return;
+      startTransition(async () => {
+        try {
+          await renameTopic(selection.subject, selection.topic, nextName);
+          setSelection({
+            type: "topic",
+            subject: selection.subject,
+            topic: nextName,
+          });
+        } catch (error) {
+          setActionError(getErrorMessage(error));
+        }
+      });
+    } else if (selection.type === "folder") {
+      const nextName = window
+        .prompt(`Rename "${selection.folder}" to:`, selection.folder)
+        ?.trim();
+      if (!nextName || nextName === selection.folder) return;
+      startTransition(async () => {
+        try {
+          await renameFolder(
+            selection.subject,
+            selection.topic,
+            selection.folder,
+            nextName,
+          );
+          setSelection({
+            type: "folder",
+            subject: selection.subject,
+            topic: selection.topic,
+            folder: nextName,
+          });
+        } catch (error) {
+          setActionError(getErrorMessage(error));
+        }
+      });
+    }
   }
 
-  function handleDeleteTopic(topic: string) {
-    const count = topics.find((t) => t.name === topic)?.count ?? 0;
-    if (
-      !window.confirm(
-        `Delete the "${topic}" topic? This deletes all ${count} flashcard${count === 1 ? "" : "s"} in it, across every folder. This cannot be undone.`,
-      )
-    ) {
-      return;
-    }
-    startTransition(async () => {
-      try {
-        await deleteTopic(topic);
-        setSelection({ type: "all" });
-      } catch (error) {
-        setActionError(getErrorMessage(error));
+  function handleDeleteSelection() {
+    if (selection.type === "subject") {
+      const count = subjects.find((s) => s.name === selection.subject)?.count ?? 0;
+      if (
+        !window.confirm(
+          `Delete the "${selection.subject}" subject? This deletes all ${count} flashcard${count === 1 ? "" : "s"} in it, across every topic and folder. This cannot be undone.`,
+        )
+      ) {
+        return;
       }
-    });
+      startTransition(async () => {
+        try {
+          await deleteSubject(selection.subject);
+          setSelection({ type: "all" });
+        } catch (error) {
+          setActionError(getErrorMessage(error));
+        }
+      });
+    } else if (selection.type === "topic") {
+      const count =
+        subjects
+          .find((s) => s.name === selection.subject)
+          ?.topics.find((t) => t.name === selection.topic)?.count ?? 0;
+      if (
+        !window.confirm(
+          `Delete the "${selection.topic}" topic? This deletes all ${count} flashcard${count === 1 ? "" : "s"} in it, across every folder. This cannot be undone.`,
+        )
+      ) {
+        return;
+      }
+      const subject = selection.subject;
+      startTransition(async () => {
+        try {
+          await deleteTopic(selection.subject, selection.topic);
+          setSelection({ type: "subject", subject });
+        } catch (error) {
+          setActionError(getErrorMessage(error));
+        }
+      });
+    } else if (selection.type === "folder") {
+      const count =
+        subjects
+          .find((s) => s.name === selection.subject)
+          ?.topics.find((t) => t.name === selection.topic)
+          ?.folders.find((f) => f.name === selection.folder)?.count ?? 0;
+      if (
+        !window.confirm(
+          `Delete the "${selection.folder}" folder? This deletes all ${count} flashcard${count === 1 ? "" : "s"} in it. This cannot be undone.`,
+        )
+      ) {
+        return;
+      }
+      const subject = selection.subject;
+      const topic = selection.topic;
+      startTransition(async () => {
+        try {
+          await deleteFolder(selection.subject, selection.topic, selection.folder);
+          setSelection({ type: "topic", subject, topic });
+        } catch (error) {
+          setActionError(getErrorMessage(error));
+        }
+      });
+    }
   }
+
+  const renameDeleteLabel =
+    selection.type === "subject"
+      ? "subject"
+      : selection.type === "topic"
+        ? "topic"
+        : "folder";
 
   function handleOpenScopeShare() {
     const ids =
       selection.type === "all"
         ? notes.map((n) => n.id)
-        : selection.type === "topic"
-          ? notes.filter((n) => n.topic === selection.topic).map((n) => n.id)
-          : notes
-              .filter(
-                (n) => n.topic === selection.topic && n.folder === selection.folder,
-              )
-              .map((n) => n.id);
+        : selection.type === "subject"
+          ? notes.filter((n) => n.subject === selection.subject).map((n) => n.id)
+          : selection.type === "topic"
+            ? notes
+                .filter(
+                  (n) => n.subject === selection.subject && n.topic === selection.topic,
+                )
+                .map((n) => n.id)
+            : notes
+                .filter(
+                  (n) =>
+                    n.subject === selection.subject &&
+                    n.topic === selection.topic &&
+                    n.folder === selection.folder,
+                )
+                .map((n) => n.id);
     if (ids.length === 0) return;
     setScopeShareIds(ids);
     setModalState({ type: "scope-share" });
@@ -317,18 +440,27 @@ export function BinderApp({
   const scopeShareLabel =
     selection.type === "all"
       ? "Share all to group"
-      : selection.type === "topic"
-        ? "Share topic to group"
-        : "Share folder to group";
+      : `Share ${renameDeleteLabel} to group`;
 
-  function handleDropNoteOnFolder(noteId: string, topic: string, folder: string) {
+  function handleDropNoteOnFolder(
+    noteId: string,
+    subject: string,
+    topic: string,
+    folder: string,
+  ) {
     const source = notes.find((n) => n.id === noteId);
     if (!source) return;
-    if (source.topic === topic && source.folder === folder) return;
+    if (
+      source.subject === subject &&
+      source.topic === topic &&
+      source.folder === folder
+    ) {
+      return;
+    }
     startTransition(async () => {
       try {
         await updateNote(noteId, {
-          title: source.title,
+          subject,
           topic,
           folder,
           focus: source.focus,
@@ -357,7 +489,7 @@ export function BinderApp({
           setIsSelectMode(false);
           setSelectedIds(new Set());
         }}
-        topics={topics}
+        subjects={subjects}
         allCount={notes.length}
         userName={userName}
         userEmail={userEmail}
@@ -381,12 +513,32 @@ export function BinderApp({
                 >
                   ← All entries
                 </button>
+                {(selection.type === "topic" || selection.type === "folder") && (
+                  <>
+                    <span>/</span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelection({ type: "subject", subject: selection.subject })
+                      }
+                      className="hover:text-ink hover:underline"
+                    >
+                      {selection.subject}
+                    </button>
+                  </>
+                )}
                 {selection.type === "folder" && (
                   <>
                     <span>/</span>
                     <button
                       type="button"
-                      onClick={() => setSelection({ type: "topic", topic: selection.topic })}
+                      onClick={() =>
+                        setSelection({
+                          type: "topic",
+                          subject: selection.subject,
+                          topic: selection.topic,
+                        })
+                      }
                       className="hover:text-ink hover:underline"
                     >
                       {selection.topic}
@@ -420,6 +572,7 @@ export function BinderApp({
               </svg>
               <input
                 type="text"
+                data-tour="search-input"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="search flashcards..."
@@ -429,6 +582,7 @@ export function BinderApp({
             <div className="flex items-center gap-1.5 sm:gap-2.5">
               <button
                 type="button"
+                data-tour="quiz-button"
                 onClick={() => setModalState({ type: "quiz" })}
                 className="min-h-[34px] flex-1 rounded border border-line px-2.5 py-1.5 text-[12px] font-semibold text-ink transition-opacity hover:opacity-88 sm:min-h-[44px] sm:flex-none sm:px-3.5 sm:py-2.5 sm:text-[13.5px]"
               >
@@ -436,6 +590,7 @@ export function BinderApp({
               </button>
               <button
                 type="button"
+                data-tour="new-entry-button"
                 onClick={() => setModalState({ type: "form", noteId: null })}
                 className="min-h-[34px] flex-1 rounded bg-ink px-2.5 py-1.5 text-[12px] font-semibold text-paper transition-opacity hover:opacity-88 sm:min-h-[44px] sm:flex-none sm:px-4 sm:py-2.5 sm:text-[13.5px]"
               >
@@ -444,6 +599,7 @@ export function BinderApp({
               <div className="relative shrink-0" ref={moreMenuRef}>
                 <button
                   type="button"
+                  data-tour="more-menu-button"
                   onClick={() => setIsMoreOpen((v) => !v)}
                   aria-label="More actions"
                   aria-expanded={isMoreOpen}
@@ -500,31 +656,30 @@ export function BinderApp({
                         {scopeShareLabel}
                       </button>
                     )}
-                    {searchScope === "mine" &&
-                      (selection.type === "topic" || selection.type === "folder") && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              handleRenameTopic(selection.topic);
-                              setIsMoreOpen(false);
-                            }}
-                            className="block w-full px-3.5 py-2.5 text-left text-[13px] text-ink hover:bg-paper-grid"
-                          >
-                            Rename topic
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              handleDeleteTopic(selection.topic);
-                              setIsMoreOpen(false);
-                            }}
-                            className="block w-full px-3.5 py-2.5 text-left text-[13px] text-c-crit hover:bg-c-crit/5"
-                          >
-                            Delete topic
-                          </button>
-                        </>
-                      )}
+                    {searchScope === "mine" && selection.type !== "all" && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleRename();
+                            setIsMoreOpen(false);
+                          }}
+                          className="block w-full px-3.5 py-2.5 text-left text-[13px] text-ink hover:bg-paper-grid"
+                        >
+                          Rename {renameDeleteLabel}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleDeleteSelection();
+                            setIsMoreOpen(false);
+                          }}
+                          className="block w-full px-3.5 py-2.5 text-left text-[13px] text-c-crit hover:bg-c-crit/5"
+                        >
+                          Delete {renameDeleteLabel}
+                        </button>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
@@ -598,21 +753,44 @@ export function BinderApp({
         )}
 
         {searchScope === "mine" ? (
-          browsingTopic !== null ? (
+          browsingSubject !== null ? (
             <TileGrid
               countLabel="cards"
               items={
-                topics
-                  .find((t) => t.name === browsingTopic)
+                subjects
+                  .find((s) => s.name === browsingSubject)
+                  ?.topics.map((t) => ({
+                    key: t.name,
+                    label: t.name,
+                    count: t.count,
+                    color: subjectColor(browsingSubject),
+                  })) ?? []
+              }
+              onSelect={(topic) =>
+                setSelection({ type: "topic", subject: browsingSubject, topic })
+              }
+            />
+          ) : browsingTopic !== null ? (
+            <TileGrid
+              countLabel="cards"
+              items={
+                subjects
+                  .find((s) => s.name === browsingTopic.subject)
+                  ?.topics.find((t) => t.name === browsingTopic.topic)
                   ?.folders.map((f) => ({
                     key: f.name,
                     label: f.name,
                     count: f.count,
-                    color: topicColor(browsingTopic),
+                    color: subjectColor(browsingTopic.subject),
                   })) ?? []
               }
               onSelect={(folder) =>
-                setSelection({ type: "folder", topic: browsingTopic, folder })
+                setSelection({
+                  type: "folder",
+                  subject: browsingTopic.subject,
+                  topic: browsingTopic.topic,
+                  folder,
+                })
               }
             />
           ) : (
@@ -690,9 +868,10 @@ export function BinderApp({
       {modalState.type === "form" && (
         <NoteFormModal
           note={editingNote}
+          defaultSubject={defaultSubject}
           defaultTopic={defaultTopic}
           defaultFolder={defaultFolder}
-          topics={topics}
+          subjects={subjects}
           onClose={closeModal}
           onSubmit={handleSubmitForm}
           isSaving={isPending}
@@ -701,7 +880,8 @@ export function BinderApp({
 
       {modalState.type === "import" && (
         <MdImportModal
-          topics={topics}
+          subjects={subjects}
+          defaultSubject={defaultSubject}
           defaultTopic={defaultTopic}
           defaultFolder={defaultFolder}
           onClose={closeModal}
@@ -724,7 +904,7 @@ export function BinderApp({
       {modalState.type === "bulk-move" && (
         <BulkMoveModal
           noteIds={Array.from(selectedIds)}
-          topics={topics}
+          subjects={subjects}
           onClose={closeModal}
           onMoved={() => {
             setSelectedIds(new Set());

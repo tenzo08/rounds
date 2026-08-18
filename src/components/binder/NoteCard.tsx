@@ -1,10 +1,10 @@
-import { topicColor } from "@/lib/topics";
+import { subjectColor } from "@/lib/topics";
 import { stripMarkdown } from "@/lib/markdown";
 
 interface NoteCardData {
+  subject: string;
   topic: string;
   folder: string;
-  title: string;
   focus: string;
   description: string;
 }
@@ -39,7 +39,7 @@ export function NoteCard({
   isDraggable,
   onDragStart,
 }: NoteCardProps) {
-  const color = topicColor(note.topic);
+  const color = subjectColor(note.subject);
 
   return (
     <div
@@ -75,11 +75,8 @@ export function NoteCard({
         className="mt-1.5 mb-2 truncate font-mono text-[10px] font-medium tracking-[0.08em] uppercase"
         style={{ color }}
       >
-        {note.topic} / {note.folder}
+        {note.subject} / {note.topic} / {note.folder}
       </div>
-      <h3 className="m-0 mb-1.5 font-serif text-[15px] leading-[1.3] text-ink-soft">
-        {note.title}
-      </h3>
       <div
         className="mb-2 rounded-[3px] px-2.5 py-1.5 font-serif text-[17px] leading-[1.25] text-ink"
         style={{ background: `${color}1a` }}

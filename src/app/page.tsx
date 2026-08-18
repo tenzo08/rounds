@@ -6,7 +6,7 @@ import type {
   GroupSummaryDTO,
   NoteDTO,
   SharedWithMeNoteDTO,
-  TopicSummaryDTO,
+  SubjectSummaryDTO,
 } from "@/lib/types";
 
 export default async function Home() {
@@ -18,19 +18,25 @@ export default async function Home() {
 
   const userId = session.user.id;
 
-  const [me, notes, topics, sharedWithMeRows, myMemberships] = await Promise.all([
+  const [me, notes, subjects, sharedWithMeRows, myMemberships] = await Promise.all([
     prisma.user.findUniqueOrThrow({ where: { id: userId } }),
     prisma.note.findMany({
       where: { ownerId: userId },
       include: {
-        folder: { include: { topic: true } },
+        folder: { include: { topic: { include: { subject: true } } } },
         shares: { include: { group: true } },
       },
       orderBy: { updatedAt: "desc" },
     }),
-    prisma.topic.findMany({
+    prisma.subject.findMany({
       where: { ownerId: userId },
-      include: { folders: { include: { _count: { select: { notes: true } } } } },
+      include: {
+        topics: {
+          include: {
+            folders: { include: { _count: { select: { notes: true } } } },
+          },
+        },
+      },
       orderBy: { name: "asc" },
     }),
     // Notes owned by someone else, shared into any group this user belongs to.
@@ -40,7 +46,9 @@ export default async function Home() {
         note: { ownerId: { not: userId } },
       },
       include: {
-        note: { include: { owner: true, folder: { include: { topic: true } } } },
+        note: {
+          include: { owner: true, folder: { include: { topic: { include: { subject: true } } } } },
+        },
         group: true,
       },
     }),
@@ -53,7 +61,7 @@ export default async function Home() {
 
   const noteDTOs: NoteDTO[] = notes.map((note) => ({
     id: note.id,
-    title: note.title,
+    subject: note.folder.topic.subject.name,
     topic: note.folder.topic.name,
     folder: note.folder.name,
     focus: note.focus,
@@ -63,11 +71,20 @@ export default async function Home() {
     sharedGroups: note.shares.map((s) => s.group.name),
   }));
 
-  const topicDTOs: TopicSummaryDTO[] = topics.map((t) => ({
-    name: t.name,
-    count: t.folders.reduce((sum, f) => sum + f._count.notes, 0),
-    folders: t.folders
-      .map((f) => ({ name: f.name, count: f._count.notes }))
+  const subjectDTOs: SubjectSummaryDTO[] = subjects.map((s) => ({
+    name: s.name,
+    count: s.topics.reduce(
+      (sum, t) => sum + t.folders.reduce((fSum, f) => fSum + f._count.notes, 0),
+      0,
+    ),
+    topics: s.topics
+      .map((t) => ({
+        name: t.name,
+        count: t.folders.reduce((sum, f) => sum + f._count.notes, 0),
+        folders: t.folders
+          .map((f) => ({ name: f.name, count: f._count.notes }))
+          .sort((a, b) => a.name.localeCompare(b.name)),
+      }))
       .sort((a, b) => a.name.localeCompare(b.name)),
   }));
 
@@ -80,7 +97,7 @@ export default async function Home() {
     }
     sharedWithMeByNoteId.set(share.note.id, {
       id: share.note.id,
-      title: share.note.title,
+      subject: share.note.folder.topic.subject.name,
       topic: share.note.folder.topic.name,
       folder: share.note.folder.name,
       focus: share.note.focus,
@@ -104,7 +121,7 @@ export default async function Home() {
   return (
     <BinderApp
       notes={noteDTOs}
-      topics={topicDTOs}
+      subjects={subjectDTOs}
       sharedWithMe={sharedWithMe}
       groups={groups}
       userName={me.displayName}

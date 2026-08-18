@@ -24,7 +24,7 @@ model User {
   createdAt    DateTime @default(now()) @map("created_at")
 
   notes            Note[]
-  topics           Topic[]
+  subjects         Subject[]
   createdGroups    Group[]           @relation("GroupCreator")
   groupMemberships GroupMembership[]
 
@@ -35,7 +35,6 @@ model Note {
   id          String   @id @default(cuid())
   ownerId     String   @map("owner_id")
   owner       User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  title       String
   folderId    String   @map("folder_id")
   folder      Folder   @relation(fields: [folderId], references: [id], onDelete: Cascade)
   focus       String
@@ -50,19 +49,38 @@ model Note {
   @@map("notes")
 }
 
-model Topic {
+// The course/rotation, e.g. "Pharmacology" — top-level, owner-scoped, free-form
+// and implicitly created just like Topic/Folder used to be.
+model Subject {
   id        String   @id @default(cuid())
   ownerId   String   @map("owner_id")
   owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   name      String
   createdAt DateTime @default(now()) @map("created_at")
 
-  folders Folder[]
+  topics Topic[]
 
   @@unique([ownerId, name])
+  @@map("subjects")
+}
+
+// A specific subtopic within a Subject, e.g. "Antibiotics" within "Pharmacology".
+model Topic {
+  id        String   @id @default(cuid())
+  subjectId String   @map("subject_id")
+  subject   Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  folders Folder[]
+
+  @@unique([subjectId, name])
   @@map("topics")
 }
 
+// The exam-period bucket within a Topic — Prelims/Midterms/Finals are
+// auto-created as defaults whenever a Topic is first created, but the name
+// is free-form/student-editable and extra folders can be added too.
 model Folder {
   id        String   @id @default(cuid())
   topicId   String   @map("topic_id")

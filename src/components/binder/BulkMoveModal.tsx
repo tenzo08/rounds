@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import { ModalShell } from "@/components/binder/ModalShell";
-import { TopicFolderFields } from "@/components/binder/TopicFolderFields";
+import { SubjectTopicFolderFields } from "@/components/binder/SubjectTopicFolderFields";
 import { bulkMoveNotes } from "@/lib/actions/notes";
-import type { TopicSummaryDTO } from "@/lib/types";
+import type { SubjectSummaryDTO } from "@/lib/types";
 
 interface BulkMoveModalProps {
   noteIds: string[];
-  topics: TopicSummaryDTO[];
+  subjects: SubjectSummaryDTO[];
   onClose: () => void;
   onMoved: () => void;
 }
@@ -20,26 +20,33 @@ function getErrorMessage(error: unknown): string {
 
 export function BulkMoveModal({
   noteIds,
-  topics,
+  subjects,
   onClose,
   onMoved,
 }: BulkMoveModalProps) {
+  const [subject, setSubject] = useState("");
   const [topic, setTopic] = useState("");
   const [folder, setFolder] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isMoving, setIsMoving] = useState(false);
 
   async function handleMove() {
+    const trimmedSubject = subject.trim();
     const trimmedTopic = topic.trim();
     const trimmedFolder = folder.trim();
-    if (!trimmedTopic || !trimmedFolder) {
-      setError("Pick a destination topic and folder.");
+    if (!trimmedSubject || !trimmedTopic || !trimmedFolder) {
+      setError("Pick a destination subject, topic, and folder.");
       return;
     }
     setIsMoving(true);
     setError(null);
     try {
-      await bulkMoveNotes({ noteIds, topic: trimmedTopic, folder: trimmedFolder });
+      await bulkMoveNotes({
+        noteIds,
+        subject: trimmedSubject,
+        topic: trimmedTopic,
+        folder: trimmedFolder,
+      });
       onMoved();
     } catch (err) {
       setError(getErrorMessage(err));
@@ -54,13 +61,15 @@ export function BulkMoveModal({
         Move {noteIds.length} flashcard{noteIds.length === 1 ? "" : "s"}
       </h3>
       <p className="mt-1 mb-4 text-[13px] text-ink-soft">
-        Choose the topic and folder to move the selected cards into.
+        Choose the subject, topic, and folder to move the selected cards into.
       </p>
 
-      <TopicFolderFields
-        topics={topics}
+      <SubjectTopicFolderFields
+        subjects={subjects}
+        subject={subject}
         topic={topic}
         folder={folder}
+        onSubjectChange={setSubject}
         onTopicChange={setTopic}
         onFolderChange={setFolder}
       />

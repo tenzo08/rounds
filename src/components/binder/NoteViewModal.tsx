@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ModalShell } from "@/components/binder/ModalShell";
 import { ShareModal } from "@/components/binder/ShareModal";
-import { topicColor } from "@/lib/topics";
+import { subjectColor } from "@/lib/topics";
 import { renderMarkdown } from "@/lib/markdown";
 import type { NoteDTO } from "@/lib/types";
 
@@ -23,7 +23,7 @@ export function NoteViewModal({
   isDeleting,
 }: NoteViewModalProps) {
   const [isShareOpen, setIsShareOpen] = useState(false);
-  const color = topicColor(note.topic);
+  const color = subjectColor(note.subject);
   const updated = new Date(note.updatedAt).toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
@@ -33,15 +33,8 @@ export function NoteViewModal({
   return (
     <>
       <ModalShell accentColor={color} onClose={onClose}>
-        <div className="flex items-start justify-between">
-          <div>
-            <h3 className="m-0 pr-5 font-serif text-xl text-ink">
-              {note.title}
-            </h3>
-            <div className="mt-1 font-mono text-[11px] text-ink-soft">
-              {note.topic} / {note.folder} · updated {updated}
-            </div>
-          </div>
+        <div className="pr-6 font-mono text-[11px] text-ink-soft">
+          {note.subject} / {note.topic} / {note.folder} · updated {updated}
         </div>
 
         <div

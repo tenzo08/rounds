@@ -1,7 +1,7 @@
 "use client";
 
 import { ModalShell } from "@/components/binder/ModalShell";
-import { topicColor } from "@/lib/topics";
+import { subjectColor } from "@/lib/topics";
 import { renderMarkdown } from "@/lib/markdown";
 import type { GroupFeedNoteDTO } from "@/lib/types";
 
@@ -11,7 +11,7 @@ interface GroupNoteViewModalProps {
 }
 
 export function GroupNoteViewModal({ note, onClose }: GroupNoteViewModalProps) {
-  const color = topicColor(note.topic);
+  const color = subjectColor(note.subject);
   const updated = new Date(note.updatedAt).toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
@@ -20,8 +20,7 @@ export function GroupNoteViewModal({ note, onClose }: GroupNoteViewModalProps) {
 
   return (
     <ModalShell accentColor={color} onClose={onClose}>
-      <h3 className="m-0 pr-5 font-serif text-xl text-ink">{note.title}</h3>
-      <div className="mt-1 flex items-center gap-2 font-mono text-[11px] text-ink-soft">
+      <div className="pr-5 flex items-center gap-2 font-mono text-[11px] text-ink-soft">
         {note.authorImage ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -35,7 +34,8 @@ export function GroupNoteViewModal({ note, onClose }: GroupNoteViewModalProps) {
           </span>
         )}
         <span>
-          {note.authorName} · {note.topic} / {note.folder} · updated {updated}
+          {note.authorName} · {note.subject} / {note.topic} / {note.folder} ·
+          updated {updated}
         </span>
       </div>
 

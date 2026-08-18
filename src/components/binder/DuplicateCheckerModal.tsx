@@ -78,11 +78,9 @@ export function DuplicateCheckerModal({ onClose }: DuplicateCheckerModalProps) {
                     className="flex items-center justify-between gap-2 rounded bg-paper-grid px-2.5 py-1.5"
                   >
                     <div className="min-w-0">
-                      <p className="m-0 truncate text-[12.5px] text-ink">
-                        {entry.title}
-                      </p>
                       <p className="m-0 truncate font-mono text-[10.5px] text-ink-soft">
-                        {entry.topic} / {entry.folder} · {entry.ownerName}
+                        {entry.subject} / {entry.topic} / {entry.folder} ·{" "}
+                        {entry.ownerName}
                       </p>
                     </div>
                     {entry.isOwnNote && (

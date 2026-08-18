@@ -2,30 +2,40 @@
 
 import { useState } from "react";
 import { AppSidebarShell } from "@/components/AppSidebarShell";
-import { topicColor } from "@/lib/topics";
-import type { TopicSummaryDTO } from "@/lib/types";
+import { subjectColor } from "@/lib/topics";
+import type { SubjectSummaryDTO } from "@/lib/types";
 
 export type ActiveSelection =
   | { type: "all" }
-  | { type: "topic"; topic: string }
-  | { type: "folder"; topic: string; folder: string };
+  | { type: "subject"; subject: string }
+  | { type: "topic"; subject: string; topic: string }
+  | { type: "folder"; subject: string; topic: string; folder: string };
 
 interface SidebarProps {
   selection: ActiveSelection;
   onSelect: (selection: ActiveSelection) => void;
-  topics: TopicSummaryDTO[];
+  subjects: SubjectSummaryDTO[];
   allCount: number;
   userName: string;
   userEmail: string;
   userImage: string | null;
   onSignOut: () => void;
-  onDropNote?: (noteId: string, topic: string, folder: string) => void;
+  onDropNote?: (
+    noteId: string,
+    subject: string,
+    topic: string,
+    folder: string,
+  ) => void;
+}
+
+function topicKey(subject: string, topic: string): string {
+  return `${subject}␟${topic}`;
 }
 
 export function Sidebar({
   selection,
   onSelect,
-  topics,
+  subjects,
   allCount,
   userName,
   userEmail,
@@ -33,19 +43,43 @@ export function Sidebar({
   onSignOut,
   onDropNote,
 }: SidebarProps) {
+  const activeSubjectName =
+    selection.type === "subject" ||
+    selection.type === "topic" ||
+    selection.type === "folder"
+      ? selection.subject
+      : null;
   const activeTopicName =
     selection.type === "topic" || selection.type === "folder"
       ? selection.topic
       : null;
-  const [expanded, setExpanded] = useState<Set<string>>(
-    () => new Set(activeTopicName ? [activeTopicName] : []),
+
+  const [expandedSubjects, setExpandedSubjects] = useState<Set<string>>(
+    () => new Set(activeSubjectName ? [activeSubjectName] : []),
+  );
+  const [expandedTopics, setExpandedTopics] = useState<Set<string>>(
+    () =>
+      new Set(
+        activeSubjectName && activeTopicName
+          ? [topicKey(activeSubjectName, activeTopicName)]
+          : [],
+      ),
   );
 
-  function toggleExpanded(name: string) {
-    setExpanded((prev) => {
+  function toggleExpandedSubject(name: string) {
+    setExpandedSubjects((prev) => {
       const next = new Set(prev);
       if (next.has(name)) next.delete(name);
       else next.add(name);
+      return next;
+    });
+  }
+
+  function toggleExpandedTopic(key: string) {
+    setExpandedTopics((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
       return next;
     });
   }
@@ -58,7 +92,7 @@ export function Sidebar({
       userImage={userImage}
       onSignOut={onSignOut}
     >
-      <ul className="m-0 mt-2 flex list-none flex-col gap-0.5 px-0">
+      <ul data-tour="sidebar-tree" className="m-0 mt-2 flex list-none flex-col gap-0.5 px-0">
         <Row
           label="All entries"
           count={allCount}
@@ -66,45 +100,82 @@ export function Sidebar({
           active={selection.type === "all"}
           onClick={() => onSelect({ type: "all" })}
         />
-        {topics.map((t) => {
-          const isExpanded = expanded.has(t.name);
-          const isTopicActive =
-            selection.type === "topic" && selection.topic === t.name;
+        {subjects.map((s) => {
+          const isSubjectExpanded = expandedSubjects.has(s.name);
+          const isSubjectActive =
+            selection.type === "subject" && selection.subject === s.name;
           return (
-            <li key={t.name}>
+            <li key={s.name}>
               <Row
-                label={t.name}
-                count={t.count}
-                dot={topicColor(t.name)}
-                active={isTopicActive}
-                onClick={() => onSelect({ type: "topic", topic: t.name })}
+                label={s.name}
+                count={s.count}
+                dot={subjectColor(s.name)}
+                active={isSubjectActive}
+                onClick={() => onSelect({ type: "subject", subject: s.name })}
                 expandable
-                isExpanded={isExpanded}
-                onToggleExpand={() => toggleExpanded(t.name)}
+                isExpanded={isSubjectExpanded}
+                onToggleExpand={() => toggleExpandedSubject(s.name)}
                 asListItem={false}
               />
-              {isExpanded && (
+              {isSubjectExpanded && (
                 <ul className="m-0 flex list-none flex-col gap-0.5 px-0">
-                  {t.folders.map((f) => (
-                    <FolderRow
-                      key={f.name}
-                      label={f.name}
-                      count={f.count}
-                      active={
-                        selection.type === "folder" &&
-                        selection.topic === t.name &&
-                        selection.folder === f.name
-                      }
-                      onClick={() =>
-                        onSelect({ type: "folder", topic: t.name, folder: f.name })
-                      }
-                      onDropNote={
-                        onDropNote
-                          ? (noteId) => onDropNote(noteId, t.name, f.name)
-                          : undefined
-                      }
-                    />
-                  ))}
+                  {s.topics.map((t) => {
+                    const key = topicKey(s.name, t.name);
+                    const isTopicExpanded = expandedTopics.has(key);
+                    const isTopicActive =
+                      selection.type === "topic" &&
+                      selection.subject === s.name &&
+                      selection.topic === t.name;
+                    return (
+                      <li key={key}>
+                        <TopicRow
+                          label={t.name}
+                          count={t.count}
+                          active={isTopicActive}
+                          onClick={() =>
+                            onSelect({
+                              type: "topic",
+                              subject: s.name,
+                              topic: t.name,
+                            })
+                          }
+                          isExpanded={isTopicExpanded}
+                          onToggleExpand={() => toggleExpandedTopic(key)}
+                        />
+                        {isTopicExpanded && (
+                          <ul className="m-0 flex list-none flex-col gap-0.5 px-0">
+                            {t.folders.map((f) => (
+                              <FolderRow
+                                key={f.name}
+                                label={f.name}
+                                count={f.count}
+                                active={
+                                  selection.type === "folder" &&
+                                  selection.subject === s.name &&
+                                  selection.topic === t.name &&
+                                  selection.folder === f.name
+                                }
+                                onClick={() =>
+                                  onSelect({
+                                    type: "folder",
+                                    subject: s.name,
+                                    topic: t.name,
+                                    folder: f.name,
+                                  })
+                                }
+                                onDropNote={
+                                  onDropNote
+                                    ? (noteId) =>
+                                        onDropNote(noteId, s.name, t.name, f.name)
+                                    : undefined
+                                }
+                              />
+                            ))}
+                          </ul>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </li>
@@ -156,7 +227,7 @@ function Row({
             e.stopPropagation();
             onToggleExpand?.();
           }}
-          aria-label={isExpanded ? "Collapse topic" : "Expand topic"}
+          aria-label={isExpanded ? "Collapse" : "Expand"}
           className="-ml-1 flex h-5 w-5 shrink-0 items-center justify-center text-[10px] text-binder-text/70"
         >
           {isExpanded ? "▾" : "▸"}
@@ -173,6 +244,50 @@ function Row({
     </div>
   );
   return asListItem ? <li>{content}</li> : content;
+}
+
+function TopicRow({
+  label,
+  count,
+  active,
+  onClick,
+  isExpanded,
+  onToggleExpand,
+}: {
+  label: string;
+  count: number;
+  active: boolean;
+  onClick: () => void;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
+}) {
+  return (
+    <div
+      onClick={onClick}
+      className={
+        "flex min-h-[38px] cursor-pointer items-center gap-2 border-l-[3px] py-2 pr-[18px] pl-[38px] text-[13px] font-medium transition-colors " +
+        (active
+          ? "rounded-r-md bg-paper font-semibold text-ink border-l-ink/40"
+          : "border-l-transparent text-binder-text/90 hover:bg-binder-soft")
+      }
+    >
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggleExpand();
+        }}
+        aria-label={isExpanded ? "Collapse topic" : "Expand topic"}
+        className="-ml-1 flex h-5 w-5 shrink-0 items-center justify-center text-[10px] text-binder-text/70"
+      >
+        {isExpanded ? "▾" : "▸"}
+      </button>
+      <span className="min-w-0 flex-1 truncate">{label}</span>
+      <span className="ml-auto shrink-0 font-mono text-[10.5px] opacity-60">
+        {count}
+      </span>
+    </div>
+  );
 }
 
 function FolderRow({
@@ -214,7 +329,7 @@ function FolderRow({
           : undefined
       }
       className={
-        "flex min-h-[36px] cursor-pointer items-center gap-2 border-l-[3px] py-2 pr-[18px] pl-[42px] text-[12.5px] transition-colors " +
+        "flex min-h-[36px] cursor-pointer items-center gap-2 border-l-[3px] py-2 pr-[18px] pl-[58px] text-[12.5px] transition-colors " +
         (isDragOver
           ? "border-l-ink bg-paper-grid"
           : active

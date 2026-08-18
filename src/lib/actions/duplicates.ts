@@ -14,7 +14,7 @@ async function requireUserId(): Promise<string> {
 
 interface FocusEntry {
   noteId: string;
-  title: string;
+  subject: string;
   topic: string;
   folder: string;
   ownerName: string;
@@ -23,11 +23,16 @@ interface FocusEntry {
 
 export interface DuplicateMatch {
   focus: string;
-  existingNoteTitle: string;
+  existingSubject: string;
   existingTopic: string;
   existingFolder: string;
   existingOwnerName: string;
 }
+
+const folderSelect = {
+  name: true,
+  topic: { select: { name: true, subject: { select: { name: true } } } },
+} as const;
 
 // Used by the .md import flow: flags candidate focus terms that already
 // exist somewhere the student can see (their own binder or a group's shared
@@ -44,8 +49,7 @@ export async function checkDuplicateFocuses(
       where: { ownerId: userId },
       select: {
         focus: true,
-        title: true,
-        folder: { select: { name: true, topic: { select: { name: true } } } },
+        folder: { select: folderSelect },
       },
     }),
     prisma.note.findMany({
@@ -55,8 +59,7 @@ export async function checkDuplicateFocuses(
       },
       select: {
         focus: true,
-        title: true,
-        folder: { select: { name: true, topic: { select: { name: true } } } },
+        folder: { select: folderSelect },
         owner: { select: { displayName: true } },
       },
     }),
@@ -68,7 +71,7 @@ export async function checkDuplicateFocuses(
     if (normalizedTargets.has(normalized)) {
       matches.push({
         focus: normalized,
-        existingNoteTitle: note.title,
+        existingSubject: note.folder.topic.subject.name,
         existingTopic: note.folder.topic.name,
         existingFolder: note.folder.name,
         existingOwnerName: "you",
@@ -80,7 +83,7 @@ export async function checkDuplicateFocuses(
     if (normalizedTargets.has(normalized)) {
       matches.push({
         focus: normalized,
-        existingNoteTitle: note.title,
+        existingSubject: note.folder.topic.subject.name,
         existingTopic: note.folder.topic.name,
         existingFolder: note.folder.name,
         existingOwnerName: note.owner.displayName,
@@ -109,8 +112,7 @@ export async function findDuplicateFocusGroups(): Promise<DuplicateGroup[]> {
       select: {
         id: true,
         focus: true,
-        title: true,
-        folder: { select: { name: true, topic: { select: { name: true } } } },
+        folder: { select: folderSelect },
       },
     }),
     prisma.note.findMany({
@@ -121,8 +123,7 @@ export async function findDuplicateFocusGroups(): Promise<DuplicateGroup[]> {
       select: {
         id: true,
         focus: true,
-        title: true,
-        folder: { select: { name: true, topic: { select: { name: true } } } },
+        folder: { select: folderSelect },
         owner: { select: { displayName: true } },
       },
     }),
@@ -138,7 +139,7 @@ export async function findDuplicateFocusGroups(): Promise<DuplicateGroup[]> {
   for (const n of ownNotes) {
     add(n.focus, {
       noteId: n.id,
-      title: n.title,
+      subject: n.folder.topic.subject.name,
       topic: n.folder.topic.name,
       folder: n.folder.name,
       ownerName: "You",
@@ -148,7 +149,7 @@ export async function findDuplicateFocusGroups(): Promise<DuplicateGroup[]> {
   for (const n of sharedNotes) {
     add(n.focus, {
       noteId: n.id,
-      title: n.title,
+      subject: n.folder.topic.subject.name,
       topic: n.folder.topic.name,
       folder: n.folder.name,
       ownerName: n.owner.displayName,

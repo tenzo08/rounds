@@ -2,16 +2,17 @@
 
 import { useRef, useState } from "react";
 import { ModalShell } from "@/components/binder/ModalShell";
-import { TopicFolderFields } from "@/components/binder/TopicFolderFields";
-import { topicColor } from "@/lib/topics";
+import { SubjectTopicFolderFields } from "@/components/binder/SubjectTopicFolderFields";
+import { subjectColor } from "@/lib/topics";
 import type { NoteInput } from "@/lib/actions/notes";
-import type { NoteDTO, TopicSummaryDTO } from "@/lib/types";
+import type { NoteDTO, SubjectSummaryDTO } from "@/lib/types";
 
 interface NoteFormModalProps {
   note: NoteDTO | null;
+  defaultSubject: string;
   defaultTopic: string;
   defaultFolder: string;
-  topics: TopicSummaryDTO[];
+  subjects: SubjectSummaryDTO[];
   onClose: () => void;
   onSubmit: (input: NoteInput) => void;
   isSaving: boolean;
@@ -19,40 +20,41 @@ interface NoteFormModalProps {
 
 export function NoteFormModal({
   note,
+  defaultSubject,
   defaultTopic,
   defaultFolder,
-  topics,
+  subjects,
   onClose,
   onSubmit,
   isSaving,
 }: NoteFormModalProps) {
-  const [title, setTitle] = useState(note?.title ?? "");
+  const [subject, setSubject] = useState(note?.subject ?? defaultSubject);
   const [topic, setTopic] = useState(note?.topic ?? defaultTopic);
   const [folder, setFolder] = useState(note?.folder ?? defaultFolder);
   const [focus, setFocus] = useState(note?.focus ?? "");
   const [description, setDescription] = useState(note?.description ?? "");
   const [error, setError] = useState<{
-    title?: string;
+    subject?: string;
     topic?: string;
     folder?: string;
     focus?: string;
     description?: string;
   }>({});
-  const titleRef = useRef<HTMLInputElement>(null);
+  const subjectRef = useRef<HTMLInputElement>(null);
   const topicRef = useRef<HTMLInputElement>(null);
   const folderRef = useRef<HTMLInputElement>(null);
   const focusRef = useRef<HTMLInputElement>(null);
 
-  const color = topicColor(topic || defaultTopic);
+  const color = subjectColor(subject || defaultSubject);
 
   function handleSubmit() {
-    const trimmedTitle = title.trim();
+    const trimmedSubject = subject.trim();
     const trimmedTopic = topic.trim();
     const trimmedFolder = folder.trim();
     const trimmedFocus = focus.trim();
     const trimmedDescription = description.trim();
     const nextError: typeof error = {};
-    if (!trimmedTitle) nextError.title = "Title is required";
+    if (!trimmedSubject) nextError.subject = "Subject is required";
     if (!trimmedTopic) nextError.topic = "Topic is required";
     if (!trimmedFolder) nextError.folder = "Folder is required";
     if (!trimmedFocus) nextError.focus = "Focus is required";
@@ -60,7 +62,7 @@ export function NoteFormModal({
 
     if (Object.keys(nextError).length > 0) {
       setError(nextError);
-      if (nextError.title) titleRef.current?.focus();
+      if (nextError.subject) subjectRef.current?.focus();
       else if (nextError.topic) topicRef.current?.focus();
       else if (nextError.folder) folderRef.current?.focus();
       else if (nextError.focus) focusRef.current?.focus();
@@ -68,7 +70,7 @@ export function NoteFormModal({
     }
 
     onSubmit({
-      title: trimmedTitle,
+      subject: trimmedSubject,
       topic: trimmedTopic,
       folder: trimmedFolder,
       focus: trimmedFocus,
@@ -82,26 +84,16 @@ export function NoteFormModal({
         {note ? "Edit flashcard" : "New flashcard"}
       </h3>
 
-      <Field label="Title">
-        <input
-          ref={titleRef}
-          type="text"
-          value={title}
-          onChange={(e) => {
-            setTitle(e.target.value);
-            if (error.title) setError((prev) => ({ ...prev, title: undefined }));
-          }}
-          placeholder="e.g. Beta-blockers"
-          className="w-full rounded border border-line bg-paper px-[11px] py-[9px] font-sans text-sm text-ink outline-none focus:border-ink"
-        />
-        {error.title && <p className="mt-1 text-xs text-c-crit">{error.title}</p>}
-      </Field>
-
       <div className="mt-4">
-        <TopicFolderFields
-          topics={topics}
+        <SubjectTopicFolderFields
+          subjects={subjects}
+          subject={subject}
           topic={topic}
           folder={folder}
+          onSubjectChange={(v) => {
+            setSubject(v);
+            if (error.subject) setError((prev) => ({ ...prev, subject: undefined }));
+          }}
           onTopicChange={(v) => {
             setTopic(v);
             if (error.topic) setError((prev) => ({ ...prev, topic: undefined }));
@@ -110,8 +102,10 @@ export function NoteFormModal({
             setFolder(v);
             if (error.folder) setError((prev) => ({ ...prev, folder: undefined }));
           }}
+          subjectError={error.subject}
           topicError={error.topic}
           folderError={error.folder}
+          subjectRef={subjectRef}
           topicRef={topicRef}
           folderRef={folderRef}
         />

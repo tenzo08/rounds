@@ -2,22 +2,32 @@
 
 import { useMemo, useRef, useState } from "react";
 import { ModalShell } from "@/components/binder/ModalShell";
-import { topicColor } from "@/lib/topics";
+import { subjectColor } from "@/lib/topics";
 import { renderMarkdown } from "@/lib/markdown";
 import { redactFocusFromText } from "@/lib/mdFlashcards";
 
 export interface QuizCard {
   id: string;
-  title: string;
   focus: string;
   description: string;
+  subject: string;
   topic: string;
   folder: string;
 }
 
+interface QuizFolderGroup {
+  folder: string;
+  count: number;
+}
+
 interface QuizTopicGroup {
   topic: string;
-  folders: { folder: string; count: number }[];
+  folders: QuizFolderGroup[];
+}
+
+interface QuizSubjectGroup {
+  subject: string;
+  topics: QuizTopicGroup[];
 }
 
 interface QuizResult {
@@ -34,8 +44,8 @@ interface QuizModalProps {
 
 type QuizMode = "type" | "flip";
 
-function folderKey(topic: string, folder: string): string {
-  return `${topic} ${folder}`;
+function folderKey(subject: string, topic: string, folder: string): string {
+  return `${subject}␟${topic}␟${folder}`;
 }
 
 function shuffle<T>(items: T[]): T[] {
@@ -56,26 +66,37 @@ function normalize(value: string): string {
 type Step = "mode" | "setup" | "playing" | "done" | "review";
 
 export function QuizModal({ title, cards, onClose }: QuizModalProps) {
-  const groups = useMemo<QuizTopicGroup[]>(() => {
-    const byTopic = new Map<string, Map<string, number>>();
+  const groups = useMemo<QuizSubjectGroup[]>(() => {
+    const bySubject = new Map<string, Map<string, Map<string, number>>>();
     for (const card of cards) {
-      if (!byTopic.has(card.topic)) byTopic.set(card.topic, new Map());
-      const folders = byTopic.get(card.topic)!;
+      if (!bySubject.has(card.subject)) bySubject.set(card.subject, new Map());
+      const topics = bySubject.get(card.subject)!;
+      if (!topics.has(card.topic)) topics.set(card.topic, new Map());
+      const folders = topics.get(card.topic)!;
       folders.set(card.folder, (folders.get(card.folder) ?? 0) + 1);
     }
-    return Array.from(byTopic.entries())
-      .map(([topic, folders]) => ({
-        topic,
-        folders: Array.from(folders.entries())
-          .map(([folder, count]) => ({ folder, count }))
-          .sort((a, b) => a.folder.localeCompare(b.folder)),
+    return Array.from(bySubject.entries())
+      .map(([subject, topics]) => ({
+        subject,
+        topics: Array.from(topics.entries())
+          .map(([topic, folders]) => ({
+            topic,
+            folders: Array.from(folders.entries())
+              .map(([folder, count]) => ({ folder, count }))
+              .sort((a, b) => a.folder.localeCompare(b.folder)),
+          }))
+          .sort((a, b) => a.topic.localeCompare(b.topic)),
       }))
-      .sort((a, b) => a.topic.localeCompare(b.topic));
+      .sort((a, b) => a.subject.localeCompare(b.subject));
   }, [cards]);
 
   const allKeys = useMemo(
     () =>
-      groups.flatMap((g) => g.folders.map((f) => folderKey(g.topic, f.folder))),
+      groups.flatMap((g) =>
+        g.topics.flatMap((t) =>
+          t.folders.map((f) => folderKey(g.subject, t.topic, f.folder)),
+        ),
+      ),
     [groups],
   );
 
@@ -94,7 +115,9 @@ export function QuizModal({ title, cards, onClose }: QuizModalProps) {
   const availablePool =
     selected.size === 0
       ? cards
-      : cards.filter((c) => selected.has(folderKey(c.topic, c.folder)));
+      : cards.filter((c) =>
+          selected.has(folderKey(c.subject, c.topic, c.folder)),
+        );
   const [maxItemsInput, setMaxItemsInput] = useState<string>("");
   const maxItems = Math.max(
     1,
@@ -104,20 +127,37 @@ export function QuizModal({ title, cards, onClose }: QuizModalProps) {
     ),
   );
 
-  function toggleFolder(topic: string, folder: string) {
+  function toggleFolder(subject: string, topic: string, folder: string) {
     setSelected((prev) => {
       const next = new Set(prev);
-      const key = folderKey(topic, folder);
+      const key = folderKey(subject, topic, folder);
       if (next.has(key)) next.delete(key);
       else next.add(key);
       return next;
     });
   }
 
-  function toggleTopic(group: QuizTopicGroup) {
+  function toggleTopic(subject: string, topicGroup: QuizTopicGroup) {
     setSelected((prev) => {
       const next = new Set(prev);
-      const keys = group.folders.map((f) => folderKey(group.topic, f.folder));
+      const keys = topicGroup.folders.map((f) =>
+        folderKey(subject, topicGroup.topic, f.folder),
+      );
+      const allSelected = keys.every((k) => next.has(k));
+      for (const k of keys) {
+        if (allSelected) next.delete(k);
+        else next.add(k);
+      }
+      return next;
+    });
+  }
+
+  function toggleSubject(subjectGroup: QuizSubjectGroup) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      const keys = subjectGroup.topics.flatMap((t) =>
+        t.folders.map((f) => folderKey(subjectGroup.subject, t.topic, f.folder)),
+      );
       const allSelected = keys.every((k) => next.has(k));
       for (const k of keys) {
         if (allSelected) next.delete(k);
@@ -174,7 +214,7 @@ export function QuizModal({ title, cards, onClose }: QuizModalProps) {
   }
 
   const current = deck[index];
-  const color = current ? topicColor(current.topic) : "#4A7C59";
+  const color = current ? subjectColor(current.subject) : "#4A7C59";
   const score = results.filter((r) => r.correct).length;
   const scorePercent = deck.length > 0 ? Math.round((score / deck.length) * 100) : 0;
 
@@ -239,7 +279,7 @@ export function QuizModal({ title, cards, onClose }: QuizModalProps) {
             {mode === "type"
               ? "You'll see the description and type the term it's describing."
               : "You'll see the description, then tap the card to reveal the term."}{" "}
-            Pick topics or folders to include, or select all.
+            Pick subjects, topics, or folders to include, or select all.
           </p>
           {groups.length === 0 ? (
             <p className="text-[13.5px] text-ink-soft">
@@ -260,47 +300,77 @@ export function QuizModal({ title, cards, onClose }: QuizModalProps) {
               </label>
               <div className="max-h-[38vh] overflow-y-auto rounded border border-line">
                 {groups.map((group) => {
-                  const keys = group.folders.map((f) =>
-                    folderKey(group.topic, f.folder),
+                  const subjectKeys = group.topics.flatMap((t) =>
+                    t.folders.map((f) =>
+                      folderKey(group.subject, t.topic, f.folder),
+                    ),
                   );
-                  const groupAllSelected =
-                    keys.length > 0 && keys.every((k) => selected.has(k));
+                  const subjectAllSelected =
+                    subjectKeys.length > 0 &&
+                    subjectKeys.every((k) => selected.has(k));
                   return (
-                    <div key={group.topic} className="border-b border-line last:border-b-0">
+                    <div key={group.subject} className="border-b border-line last:border-b-0">
                       <label className="flex min-h-[40px] cursor-pointer items-center gap-2.5 bg-paper-grid px-3 py-2">
                         <input
                           type="checkbox"
-                          checked={groupAllSelected}
-                          onChange={() => toggleTopic(group)}
+                          checked={subjectAllSelected}
+                          onChange={() => toggleSubject(group)}
                           className="h-3.5 w-3.5 shrink-0"
                         />
                         <span
                           className="h-[9px] w-[9px] shrink-0 rounded-[2px]"
-                          style={{ background: topicColor(group.topic) }}
+                          style={{ background: subjectColor(group.subject) }}
                         />
                         <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-ink">
-                          {group.topic}
+                          {group.subject}
                         </span>
                       </label>
-                      {group.folders.map((f) => (
-                        <label
-                          key={f.folder}
-                          className="flex min-h-[36px] cursor-pointer items-center gap-2.5 px-3 py-1.5 pl-9"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selected.has(folderKey(group.topic, f.folder))}
-                            onChange={() => toggleFolder(group.topic, f.folder)}
-                            className="h-3.5 w-3.5 shrink-0"
-                          />
-                          <span className="min-w-0 flex-1 truncate text-[12.5px] text-ink-soft">
-                            {f.folder}
-                          </span>
-                          <span className="shrink-0 font-mono text-[10.5px] text-ink-soft opacity-60">
-                            {f.count}
-                          </span>
-                        </label>
-                      ))}
+                      {group.topics.map((t) => {
+                        const topicKeys = t.folders.map((f) =>
+                          folderKey(group.subject, t.topic, f.folder),
+                        );
+                        const topicAllSelected =
+                          topicKeys.length > 0 &&
+                          topicKeys.every((k) => selected.has(k));
+                        return (
+                          <div key={t.topic}>
+                            <label className="flex min-h-[38px] cursor-pointer items-center gap-2.5 py-1.5 pr-3 pl-7">
+                              <input
+                                type="checkbox"
+                                checked={topicAllSelected}
+                                onChange={() => toggleTopic(group.subject, t)}
+                                className="h-3.5 w-3.5 shrink-0"
+                              />
+                              <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-ink-soft">
+                                {t.topic}
+                              </span>
+                            </label>
+                            {t.folders.map((f) => (
+                              <label
+                                key={f.folder}
+                                className="flex min-h-[36px] cursor-pointer items-center gap-2.5 px-3 py-1.5 pl-12"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={selected.has(
+                                    folderKey(group.subject, t.topic, f.folder),
+                                  )}
+                                  onChange={() =>
+                                    toggleFolder(group.subject, t.topic, f.folder)
+                                  }
+                                  className="h-3.5 w-3.5 shrink-0"
+                                />
+                                <span className="min-w-0 flex-1 truncate text-[12.5px] text-ink-soft">
+                                  {f.folder}
+                                </span>
+                                <span className="shrink-0 font-mono text-[10.5px] text-ink-soft opacity-60">
+                                  {f.count}
+                                </span>
+                              </label>
+                            ))}
+                          </div>
+                        );
+                      })}
                     </div>
                   );
                 })}
@@ -349,7 +419,7 @@ export function QuizModal({ title, cards, onClose }: QuizModalProps) {
               Card {index + 1} / {deck.length}
             </span>
             <span>
-              {current.topic} / {current.folder}
+              {current.subject} / {current.topic} / {current.folder}
             </span>
           </div>
           <div
@@ -387,7 +457,7 @@ export function QuizModal({ title, cards, onClose }: QuizModalProps) {
           {checked && (
             <div className="mt-3.5 rounded-[3px] border border-line px-3.5 py-3">
               <p className="m-0 mb-1 font-mono text-[10.5px] tracking-[0.08em] text-ink-soft uppercase">
-                {current.title}
+                {current.topic}
               </p>
               <p className="m-0 font-serif text-[19px] leading-[1.3] text-ink">
                 {current.focus}
@@ -436,7 +506,7 @@ export function QuizModal({ title, cards, onClose }: QuizModalProps) {
               Card {index + 1} / {deck.length}
             </span>
             <span>
-              {current.topic} / {current.folder}
+              {current.subject} / {current.topic} / {current.folder}
             </span>
           </div>
 
@@ -457,7 +527,7 @@ export function QuizModal({ title, cards, onClose }: QuizModalProps) {
             ) : (
               <div className="text-center">
                 <p className="m-0 mb-1 font-mono text-[10.5px] tracking-[0.08em] text-ink-soft uppercase">
-                  {current.title}
+                  {current.topic}
                 </p>
                 <p className="m-0 font-serif text-[24px] leading-[1.3] text-ink">
                   {current.focus}

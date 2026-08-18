@@ -1,52 +1,81 @@
 "use client";
 
 import { useRef, useState } from "react";
-import type { TopicSummaryDTO } from "@/lib/types";
+import type { SubjectSummaryDTO } from "@/lib/types";
 
 const NEW_FOLDER_VALUE = "__new__";
 
-interface TopicFolderFieldsProps {
-  topics: TopicSummaryDTO[];
+// Shown as ready-made folder choices the moment a brand-new topic is named —
+// resolveFolderId() on the server seeds exactly these three (minus whichever
+// one is actually chosen) the first time a topic is created, so offering
+// them here up front avoids the field starting out as a bare text input.
+const DEFAULT_FOLDER_SUGGESTIONS = [
+  { name: "Prelims", count: 0 },
+  { name: "Midterms", count: 0 },
+  { name: "Finals", count: 0 },
+];
+
+interface SubjectTopicFolderFieldsProps {
+  subjects: SubjectSummaryDTO[];
+  subject: string;
   topic: string;
   folder: string;
+  onSubjectChange: (value: string) => void;
   onTopicChange: (value: string) => void;
   onFolderChange: (value: string) => void;
+  subjectError?: string;
   topicError?: string;
   folderError?: string;
+  subjectRef?: React.RefObject<HTMLInputElement | null>;
   topicRef?: React.RefObject<HTMLInputElement | null>;
   folderRef?: React.RefObject<HTMLInputElement | null>;
 }
 
-export function TopicFolderFields({
-  topics,
+export function SubjectTopicFolderFields({
+  subjects,
+  subject,
   topic,
   folder,
+  onSubjectChange,
   onTopicChange,
   onFolderChange,
+  subjectError,
   topicError,
   folderError,
+  subjectRef,
   topicRef,
   folderRef,
-}: TopicFolderFieldsProps) {
-  const matchingTopic = topics.find(
+}: SubjectTopicFolderFieldsProps) {
+  const matchingSubject = subjects.find(
+    (s) => s.name.toLowerCase() === subject.trim().toLowerCase(),
+  );
+  const topicSuggestions = matchingSubject?.topics ?? [];
+  const matchingTopic = topicSuggestions.find(
     (t) => t.name.toLowerCase() === topic.trim().toLowerCase(),
   );
-  const folderSuggestions = matchingTopic?.folders ?? [];
   const isNewTopic = topic.trim().length > 0 && !matchingTopic;
+  const folderSuggestions = matchingTopic
+    ? matchingTopic.folders
+    : topic.trim().length > 0
+      ? DEFAULT_FOLDER_SUGGESTIONS
+      : [];
   const hasExistingFolders = folderSuggestions.length > 0;
 
   // Whether the folder field is in "type a new name" mode vs. "pick from the
-  // list" mode. Starts in list mode whenever the current topic already has
-  // folders and the current value matches one of them. Recomputed (during
-  // render, not an effect — this is the "adjust state when a prop changes"
-  // pattern) whenever the resolved topic identity changes.
+  // list" mode. Starts in list mode whenever the resolved topic has folder
+  // suggestions (real or the Prelims/Midterms/Finals defaults) and the
+  // current value matches one of them. Recomputed (during render, not an
+  // effect — this is the "adjust state when a prop changes" pattern)
+  // whenever the resolved topic identity changes.
   const [isCreatingNew, setIsCreatingNew] = useState(!hasExistingFolders);
-  const [lastTopicKey, setLastTopicKey] = useState(matchingTopic?.name ?? null);
+  const topicIdentityKey = matchingTopic
+    ? `${matchingSubject!.name}␟${matchingTopic.name}`
+    : null;
+  const [lastTopicKey, setLastTopicKey] = useState(topicIdentityKey);
   const newFolderInputRef = useRef<HTMLInputElement>(null);
 
-  const topicKey = matchingTopic?.name ?? null;
-  if (topicKey !== lastTopicKey) {
-    setLastTopicKey(topicKey);
+  if (topicIdentityKey !== lastTopicKey) {
+    setLastTopicKey(topicIdentityKey);
     if (!hasExistingFolders || folder.trim().length === 0) {
       setIsCreatingNew(!hasExistingFolders);
     } else {
@@ -68,7 +97,27 @@ export function TopicFolderFields({
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <Field label="Subject">
+        <input
+          ref={subjectRef}
+          type="text"
+          list="subject-suggestions"
+          value={subject}
+          onChange={(e) => onSubjectChange(e.target.value)}
+          placeholder="e.g. Pharmacology"
+          className="w-full rounded border border-line bg-paper px-[11px] py-[9px] font-sans text-sm text-ink outline-none focus:border-ink"
+        />
+        <datalist id="subject-suggestions">
+          {subjects.map((s) => (
+            <option key={s.name} value={s.name} />
+          ))}
+        </datalist>
+        {subjectError && (
+          <p className="mt-1 text-xs text-c-crit">{subjectError}</p>
+        )}
+      </Field>
+
       <Field label="Topic">
         <input
           ref={topicRef}
@@ -76,11 +125,11 @@ export function TopicFolderFields({
           list="topic-suggestions"
           value={topic}
           onChange={(e) => onTopicChange(e.target.value)}
-          placeholder="e.g. Pharmacology"
+          placeholder="e.g. Antibiotics"
           className="w-full rounded border border-line bg-paper px-[11px] py-[9px] font-sans text-sm text-ink outline-none focus:border-ink"
         />
         <datalist id="topic-suggestions">
-          {topics.map((t) => (
+          {topicSuggestions.map((t) => (
             <option key={t.name} value={t.name} />
           ))}
         </datalist>
@@ -138,7 +187,7 @@ export function TopicFolderFields({
         ) : (
           <p className="-mt-1 mt-1.5 font-mono text-[10.5px] text-ink-soft opacity-75">
             {isNewTopic
-              ? "New topic — name a folder to start it (e.g. Prelims)"
+              ? "New topic — Prelims/Midterms/Finals are created automatically"
               : hasExistingFolders && !isCreatingNew
                 ? "Pick an existing folder, or create a new one"
                 : "Type any folder — new ones are created automatically"}

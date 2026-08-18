@@ -15,28 +15,33 @@ async function requireUserId(): Promise<string> {
 }
 
 const cardSchema = z.object({
-  title: z.string().trim().min(1).max(200),
   focus: z.string().trim().min(1).max(120),
   description: z.string().trim().min(1).max(20000),
 });
 
 export async function importFlashcards(
+  subject: string,
   topic: string,
   folder: string,
-  cards: { title: string; focus: string; description: string }[],
+  cards: { focus: string; description: string }[],
 ): Promise<{ created: number }> {
   const userId = await requireUserId();
+  const validSubject = z.string().trim().min(1).max(60).parse(subject);
   const validTopic = z.string().trim().min(1).max(60).parse(topic);
   const validFolder = z.string().trim().min(1).max(60).parse(folder);
   const validCards = z.array(cardSchema).min(1).max(200).parse(cards);
 
-  const folderId = await resolveFolderId(userId, validTopic, validFolder);
+  const folderId = await resolveFolderId(
+    userId,
+    validSubject,
+    validTopic,
+    validFolder,
+  );
 
   await prisma.note.createMany({
     data: validCards.map((card) => ({
       ownerId: userId,
       folderId,
-      title: card.title,
       focus: card.focus,
       description: card.description,
     })),

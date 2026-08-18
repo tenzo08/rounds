@@ -1,7 +1,8 @@
-// Topics are free-form and student-created (no fixed list), but each one still
-// gets a stable accent color from docs/DESIGN.md's rotation palette, picked
-// deterministically by name so the same topic always renders the same color.
-const TOPIC_PALETTE = [
+// Subjects are free-form and student-created (no fixed list), but each one
+// still gets a stable accent color from docs/DESIGN.md's rotation palette,
+// picked deterministically by name so the same subject always renders the
+// same color everywhere it appears (tabs, tiles, cards, quiz accents).
+const SUBJECT_PALETTE = [
   "#4A7C59",
   "#6B5B95",
   "#3B6E8F",
@@ -10,10 +11,10 @@ const TOPIC_PALETTE = [
   "#B33A3A",
 ];
 
-export function topicColor(name: string): string {
+export function subjectColor(name: string): string {
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
     hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
   }
-  return TOPIC_PALETTE[hash % TOPIC_PALETTE.length];
+  return SUBJECT_PALETTE[hash % SUBJECT_PALETTE.length];
 }

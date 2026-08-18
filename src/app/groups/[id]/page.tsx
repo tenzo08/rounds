@@ -58,14 +58,16 @@ export default async function GroupDetailPage({
   const shares = await prisma.noteShare.findMany({
     where: { groupId: id },
     include: {
-      note: { include: { owner: true, folder: { include: { topic: true } } } },
+      note: {
+        include: { owner: true, folder: { include: { topic: { include: { subject: true } } } } },
+      },
     },
     orderBy: { sharedAt: "desc" },
   });
 
   const feedNotes: GroupFeedNoteDTO[] = shares.map((s) => ({
     id: s.note.id,
-    title: s.note.title,
+    subject: s.note.folder.topic.subject.name,
     topic: s.note.folder.topic.name,
     folder: s.note.folder.name,
     focus: s.note.focus,
