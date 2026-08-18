@@ -9,6 +9,11 @@ export interface TourStep {
   // Route the step's target lives on. Omit for chrome that's present on
   // every page (sidebar footer controls).
   route?: "/" | "/groups";
+  // True when the target lives inside AppSidebarShell's footer/nav/tree —
+  // on a phone-width viewport that content only exists inside the
+  // collapsible hamburger drawer, so the tour needs to force it open for
+  // this step and closed again for every other step.
+  sidebarChrome?: boolean;
 }
 
 export const TOUR_STEPS: TourStep[] = [
@@ -24,6 +29,7 @@ export const TOUR_STEPS: TourStep[] = [
     body: "These two tabs are the whole app. My Binder is your own private set of flashcards. Groups is where you see cards classmates have shared with you.",
     target: "nav-links",
     route: "/",
+    sidebarChrome: true,
   },
   {
     id: "tree",
@@ -31,6 +37,7 @@ export const TOUR_STEPS: TourStep[] = [
     body: "Your binder is organized three levels deep: a Subject (like Pharmacology) holds Topics (like Antibiotics), and each Topic holds Folders for the exam period. Prelims, Midterms, and Finals are created for you automatically whenever you start a new Topic — you can rename any of them, or add your own.",
     target: "sidebar-tree",
     route: "/",
+    sidebarChrome: true,
   },
   {
     id: "new-entry",
@@ -78,17 +85,20 @@ export const TOUR_STEPS: TourStep[] = [
     title: "Edit profile",
     body: "Change your nickname or picture from here — upload a photo, or pick one of the built-in icons if you'd rather skip a photo.",
     target: "edit-profile-button",
+    sidebarChrome: true,
   },
   {
     id: "theme",
     title: "Light & dark mode",
     body: "This switches the reading area between light and dark. The dark binder sidebar always stays the same — it's a deliberate part of the design, not a \"dark mode\" artifact.",
     target: "theme-toggle",
+    sidebarChrome: true,
   },
   {
     id: "help",
     title: "You're all set",
     body: "That covers everything. Come back to this Help button anytime you want a refresher.",
     target: "help-button",
+    sidebarChrome: true,
   },
 ];

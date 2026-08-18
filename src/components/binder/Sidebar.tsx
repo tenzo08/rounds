@@ -26,6 +26,7 @@ interface SidebarProps {
     topic: string,
     folder: string,
   ) => void;
+  onAddSubject?: () => void;
 }
 
 function topicKey(subject: string, topic: string): string {
@@ -42,6 +43,7 @@ export function Sidebar({
   userImage,
   onSignOut,
   onDropNote,
+  onAddSubject,
 }: SidebarProps) {
   const activeSubjectName =
     selection.type === "subject" ||
@@ -93,13 +95,28 @@ export function Sidebar({
       onSignOut={onSignOut}
     >
       <ul data-tour="sidebar-tree" className="m-0 mt-2 flex list-none flex-col gap-0.5 px-0">
-        <Row
-          label="All entries"
-          count={allCount}
-          dot="#8A9199"
-          active={selection.type === "all"}
-          onClick={() => onSelect({ type: "all" })}
-        />
+        <li className="flex items-center gap-1 pr-3">
+          <div className="min-w-0 flex-1">
+            <Row
+              label="All entries"
+              count={allCount}
+              dot="#8A9199"
+              active={selection.type === "all"}
+              onClick={() => onSelect({ type: "all" })}
+              asListItem={false}
+            />
+          </div>
+          {onAddSubject && (
+            <button
+              type="button"
+              onClick={onAddSubject}
+              aria-label="New subject"
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-binder-text/70 hover:bg-binder-soft hover:text-binder-text"
+            >
+              +
+            </button>
+          )}
+        </li>
         {subjects.map((s) => {
           const isSubjectExpanded = expandedSubjects.has(s.name);
           const isSubjectActive =

@@ -22,6 +22,9 @@ import {
   deleteNote,
   updateNote,
   bulkDeleteNotes,
+  createSubject,
+  createTopic,
+  createFolder,
   deleteSubject,
   deleteTopic,
   deleteFolder,
@@ -472,6 +475,51 @@ export function BinderApp({
     });
   }
 
+  // Subjects/Topics/Folders are otherwise only ever created implicitly by
+  // typing a new name on a flashcard — these let a student set up the
+  // structure ahead of time. Each navigates into the freshly created
+  // container afterward, so "+ New entry" right after correctly defaults
+  // to it (defaultSubject/defaultTopic/defaultFolder below are derived
+  // straight from `selection`).
+  function handleCreateSubject() {
+    const name = window.prompt("New subject:")?.trim();
+    if (!name) return;
+    startTransition(async () => {
+      try {
+        await createSubject(name);
+        setSelection({ type: "subject", subject: name });
+      } catch (error) {
+        setActionError(getErrorMessage(error));
+      }
+    });
+  }
+
+  function handleCreateTopic(subject: string) {
+    const name = window.prompt(`New topic in "${subject}":`)?.trim();
+    if (!name) return;
+    startTransition(async () => {
+      try {
+        await createTopic(subject, name);
+        setSelection({ type: "topic", subject, topic: name });
+      } catch (error) {
+        setActionError(getErrorMessage(error));
+      }
+    });
+  }
+
+  function handleCreateFolder(subject: string, topic: string) {
+    const name = window.prompt(`New folder in "${topic}":`)?.trim();
+    if (!name) return;
+    startTransition(async () => {
+      try {
+        await createFolder(subject, topic, name);
+        setSelection({ type: "folder", subject, topic, folder: name });
+      } catch (error) {
+        setActionError(getErrorMessage(error));
+      }
+    });
+  }
+
   return (
     <div className="flex h-dvh flex-col overflow-hidden md:flex-row">
       <IdleLogout />
@@ -498,6 +546,7 @@ export function BinderApp({
           void signOutAction();
         }}
         onDropNote={handleDropNoteOnFolder}
+        onAddSubject={handleCreateSubject}
       />
 
       <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -769,6 +818,8 @@ export function BinderApp({
               onSelect={(topic) =>
                 setSelection({ type: "topic", subject: browsingSubject, topic })
               }
+              addNewLabel="+ New topic"
+              onAddNew={() => handleCreateTopic(browsingSubject)}
             />
           ) : browsingTopic !== null ? (
             <TileGrid
@@ -791,6 +842,10 @@ export function BinderApp({
                   topic: browsingTopic.topic,
                   folder,
                 })
+              }
+              addNewLabel="+ New folder"
+              onAddNew={() =>
+                handleCreateFolder(browsingTopic.subject, browsingTopic.topic)
               }
             />
           ) : (

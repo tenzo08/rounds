@@ -3,7 +3,7 @@ import { notifyGroupChanged } from "@/lib/server/notifyGroup";
 
 // Every Topic is seeded with these three exam-period folders the moment
 // it's created — students can still rename them or add more of their own.
-const DEFAULT_FOLDER_NAMES = ["Prelims", "Midterms", "Finals"];
+export const DEFAULT_FOLDER_NAMES = ["Prelims", "Midterms", "Finals"];
 
 // Subjects, Topics, and Folders are all created implicitly as a student
 // types names on a note — there's no separate "manage" screen for any of

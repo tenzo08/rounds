@@ -9,6 +9,7 @@ import {
   cleanupIfEmpty,
   findAffectedGroupIds,
   notifyGroups,
+  DEFAULT_FOLDER_NAMES,
 } from "@/lib/server/notesShared";
 
 const noteInputSchema = z.object({
@@ -419,4 +420,80 @@ export async function deleteFolder(
 
   revalidatePath("/");
   await notifyGroups(affectedGroupIds);
+}
+
+// Subjects/Topics/Folders are otherwise only ever created implicitly by
+// typing a new name on a note — these let a student set up the structure
+// ahead of time, with no flashcard required yet. Each throws a clear
+// conflict error on a duplicate name rather than silently reusing the
+// existing one, since "create new" here is an explicit, deliberate action.
+
+export async function createSubject(name: string): Promise<void> {
+  const userId = await requireUserId();
+  const validName = nameSchema.parse(name);
+
+  const existing = await prisma.subject.findUnique({
+    where: { ownerId_name: { ownerId: userId, name: validName } },
+    select: { id: true },
+  });
+  if (existing) {
+    throw new Error(`A subject named "${validName}" already exists`);
+  }
+
+  await prisma.subject.create({ data: { ownerId: userId, name: validName } });
+  revalidatePath("/");
+}
+
+export async function createTopic(
+  subjectName: string,
+  topicName: string,
+): Promise<void> {
+  const userId = await requireUserId();
+  const subject = await resolveOwnedSubject(userId, subjectName);
+  const validName = nameSchema.parse(topicName);
+
+  const existing = await prisma.topic.findUnique({
+    where: { subjectId_name: { subjectId: subject.id, name: validName } },
+    select: { id: true },
+  });
+  if (existing) {
+    throw new Error(`A topic named "${validName}" already exists`);
+  }
+
+  // Seed the same three exam-period defaults every implicitly-created
+  // topic gets, so this one isn't a special case.
+  await prisma.$transaction(async (tx) => {
+    const created = await tx.topic.create({
+      data: { subjectId: subject.id, name: validName },
+    });
+    await tx.folder.createMany({
+      data: DEFAULT_FOLDER_NAMES.map((folderName) => ({
+        topicId: created.id,
+        name: folderName,
+      })),
+    });
+  });
+
+  revalidatePath("/");
+}
+
+export async function createFolder(
+  subjectName: string,
+  topicName: string,
+  folderName: string,
+): Promise<void> {
+  const userId = await requireUserId();
+  const topic = await resolveOwnedTopic(userId, subjectName, topicName);
+  const validName = nameSchema.parse(folderName);
+
+  const existing = await prisma.folder.findUnique({
+    where: { topicId_name: { topicId: topic.id, name: validName } },
+    select: { id: true },
+  });
+  if (existing) {
+    throw new Error(`A folder named "${validName}" already exists`);
+  }
+
+  await prisma.folder.create({ data: { topicId: topic.id, name: validName } });
+  revalidatePath("/");
 }

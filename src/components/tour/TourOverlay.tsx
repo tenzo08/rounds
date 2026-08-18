@@ -2,9 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { TOUR_STEPS } from "@/components/tour/tourSteps";
+import type { TourStep } from "@/components/tour/tourSteps";
 
 interface TourOverlayProps {
+  step: TourStep;
+  stepIndex: number;
+  totalSteps: number;
+  isLast: boolean;
+  onNext: () => void;
+  onBack: () => void;
   onClose: () => void;
 }
 
@@ -22,24 +28,37 @@ const CARD_MARGIN = 12;
 // below the spotlighted element or needs to flip above it.
 const CARD_HEIGHT_ESTIMATE = 210;
 
+// The sidebar footer/nav markup is rendered twice (once inside the mobile
+// drawer, once in the always-present desktop aside), so more than one
+// element can share the same data-tour value at once. Check every match
+// and use whichever one is actually laid out (non-zero size) instead of
+// just the first in DOM order, which may be the CSS-hidden or unmounted
+// copy depending on viewport/drawer state.
 function measureTarget(target: string): Rect | null {
-  const el = document.querySelector<HTMLElement>(`[data-tour="${target}"]`);
-  if (!el) return null;
-  const r = el.getBoundingClientRect();
-  if (r.width === 0 || r.height === 0) return null;
-  return { top: r.top, left: r.left, width: r.width, height: r.height };
+  const candidates = document.querySelectorAll<HTMLElement>(`[data-tour="${target}"]`);
+  for (const el of candidates) {
+    const r = el.getBoundingClientRect();
+    if (r.width > 0 && r.height > 0) {
+      return { top: r.top, left: r.left, width: r.width, height: r.height };
+    }
+  }
+  return null;
 }
 
-export function TourOverlay({ onClose }: TourOverlayProps) {
+export function TourOverlay({
+  step,
+  stepIndex,
+  totalSteps,
+  isLast,
+  onNext,
+  onBack,
+  onClose,
+}: TourOverlayProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const [stepIndex, setStepIndex] = useState(0);
   const [rect, setRect] = useState<Rect | null>(null);
   const [isLocating, setIsLocating] = useState(true);
   const [measuredStepIndex, setMeasuredStepIndex] = useState(-1);
-
-  const step = TOUR_STEPS[stepIndex];
-  const isLast = stepIndex === TOUR_STEPS.length - 1;
 
   // Reset locate-state the moment the step changes. Adjusted during render
   // (React's documented pattern for this — see SubjectTopicFolderFields for
@@ -64,12 +83,12 @@ export function TourOverlay({ onClose }: TourOverlayProps) {
   }, [onClose]);
 
   // Locate this step's target: navigate to its route if we're not already
-  // there, then poll briefly for the element to mount (route changes and
-  // drawer/menu opens aren't instant). If it never shows up — e.g. the
-  // student has no groups yet — fall back to the centered, no-target card
-  // rather than getting stuck. The first measurement is deferred a tick so
-  // every setState call here happens inside a timer callback, never
-  // synchronously within the effect body itself.
+  // there, then poll briefly for the element to mount (route changes, the
+  // drawer opening/closing, and menu opens aren't instant). If it never
+  // shows up — e.g. the student has no groups yet — fall back to the
+  // centered, no-target card rather than getting stuck. The first
+  // measurement is deferred a tick so every setState call here happens
+  // inside a timer callback, never synchronously within the effect body.
   useEffect(() => {
     if (!step.target) return;
     if (step.route && step.route !== pathname) {
@@ -118,18 +137,6 @@ export function TourOverlay({ onClose }: TourOverlayProps) {
     };
   }, [step.target, stepIndex]);
 
-  function goNext() {
-    if (isLast) {
-      onClose();
-      return;
-    }
-    setStepIndex((i) => i + 1);
-  }
-
-  function goBack() {
-    setStepIndex((i) => Math.max(0, i - 1));
-  }
-
   const spotlightBox = rect
     ? {
         top: rect.top - SPOTLIGHT_PADDING,
@@ -169,7 +176,7 @@ export function TourOverlay({ onClose }: TourOverlayProps) {
         style={{ borderTopColor: "#6B5B95", ...cardPosition }}
       >
         <div className="mb-1.5 font-mono text-[10.5px] tracking-[0.08em] text-ink-soft uppercase">
-          Step {stepIndex + 1} of {TOUR_STEPS.length}
+          Step {stepIndex + 1} of {totalSteps}
         </div>
         <h4 className="m-0 mb-1.5 font-serif text-[17px] text-ink">{step.title}</h4>
         <p className="m-0 mb-4 text-[13px] leading-[1.5] text-ink-soft">
@@ -187,7 +194,7 @@ export function TourOverlay({ onClose }: TourOverlayProps) {
             {stepIndex > 0 && (
               <button
                 type="button"
-                onClick={goBack}
+                onClick={onBack}
                 className="rounded border border-line px-3 py-1.5 text-xs font-semibold text-ink transition-opacity hover:opacity-88"
               >
                 Back
@@ -195,7 +202,7 @@ export function TourOverlay({ onClose }: TourOverlayProps) {
             )}
             <button
               type="button"
-              onClick={goNext}
+              onClick={onNext}
               className="rounded bg-ink px-3 py-1.5 text-xs font-semibold text-paper transition-opacity hover:opacity-88"
             >
               {isLast ? "Done" : "Next"}

@@ -4,7 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { EditProfileModal } from "@/components/EditProfileModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { TourOverlay } from "@/components/tour/TourOverlay";
+import { useTour } from "@/components/tour/TourContext";
 
 interface AppSidebarShellProps {
   activeNav: "binder" | "groups";
@@ -45,7 +45,7 @@ export function AppSidebarShell({
 }: AppSidebarShellProps) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
-  const [isTourOpen, setIsTourOpen] = useState(false);
+  const tour = useTour();
 
   useEffect(() => {
     if (!isDrawerOpen) return;
@@ -59,6 +59,26 @@ export function AppSidebarShell({
       document.body.style.overflow = "";
     };
   }, [isDrawerOpen]);
+
+  // The tour is owned by a provider mounted at the root layout (so its
+  // progress survives this component remounting on route changes), but the
+  // hamburger drawer is local state here. On a phone-width viewport, the
+  // sidebar footer/nav/tree this component renders only exists inside the
+  // drawer, so force it open for a step that points at them and closed for
+  // every other step — and closed again once the tour ends, so the page
+  // ends up looking exactly like it did before the tour started.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!tour.isOpen) {
+        setIsDrawerOpen(false);
+        return;
+      }
+      if (window.innerWidth < 768) {
+        setIsDrawerOpen(tour.wantsDrawerOpen);
+      }
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [tour.isOpen, tour.wantsDrawerOpen]);
 
   function closeDrawer() {
     setIsDrawerOpen(false);
@@ -142,7 +162,7 @@ export function AppSidebarShell({
           <button
             type="button"
             data-tour="help-button"
-            onClick={() => setIsTourOpen(true)}
+            onClick={() => tour.open()}
             aria-label="Open help tour"
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded text-binder-text/70 transition-colors hover:bg-binder-soft hover:text-binder-text"
           >
@@ -228,8 +248,6 @@ export function AppSidebarShell({
           onClose={() => setIsEditProfileOpen(false)}
         />
       )}
-
-      {isTourOpen && <TourOverlay onClose={() => setIsTourOpen(false)} />}
     </>
   );
 }

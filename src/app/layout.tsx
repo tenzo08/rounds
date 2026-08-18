@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Sans, IBM_Plex_Serif, IBM_Plex_Mono } from "next/font/google";
+import { TourProvider } from "@/components/tour/TourContext";
 import "./globals.css";
 
 const plexSans = IBM_Plex_Sans({
@@ -47,7 +48,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <TourProvider>{children}</TourProvider>
+      </body>
     </html>
   );
 }

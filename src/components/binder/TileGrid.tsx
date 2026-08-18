@@ -9,10 +9,21 @@ interface TileGridProps {
   items: TileItem[];
   countLabel: string;
   onSelect: (key: string) => void;
+  // When provided, renders an extra dashed "+ New ..." tile alongside the
+  // real ones (or alone, if items is empty) so a subject/topic/folder can
+  // be created ahead of having any flashcard in it.
+  addNewLabel?: string;
+  onAddNew?: () => void;
 }
 
-export function TileGrid({ items, countLabel, onSelect }: TileGridProps) {
-  if (items.length === 0) {
+export function TileGrid({
+  items,
+  countLabel,
+  onSelect,
+  addNewLabel,
+  onAddNew,
+}: TileGridProps) {
+  if (items.length === 0 && !onAddNew) {
     return (
       <div className="py-[70px] text-center text-ink-soft">
         <h3 className="m-0 mb-2 font-serif text-[19px] text-ink">
@@ -44,6 +55,15 @@ export function TileGrid({ items, countLabel, onSelect }: TileGridProps) {
           </p>
         </button>
       ))}
+      {onAddNew && (
+        <button
+          type="button"
+          onClick={onAddNew}
+          className="flex min-h-[78px] items-center justify-center rounded-[3px] border border-dashed border-line px-4 py-4 text-center font-mono text-[11px] tracking-[0.04em] text-ink-soft uppercase transition-colors hover:border-ink hover:text-ink"
+        >
+          {addNewLabel ?? "+ New"}
+        </button>
+      )}
     </div>
   );
 }
