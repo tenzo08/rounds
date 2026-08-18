@@ -3,7 +3,11 @@
 import { useRef, useState } from "react";
 import { ModalShell } from "@/components/binder/ModalShell";
 import { updateProfile } from "@/lib/actions/profile";
-import { downscaleToDataUrl } from "@/lib/avatarImage";
+import {
+  AVATAR_ICONS,
+  downscaleToDataUrl,
+  renderIconToDataUrl,
+} from "@/lib/avatarImage";
 
 interface EditProfileModalProps {
   currentName: string;
@@ -52,6 +56,14 @@ export function EditProfileModal({
   function handleRemove() {
     setPreviewUrl("");
     setPendingAvatar("");
+  }
+
+  function handlePickIcon(emoji: string, color: string) {
+    const dataUrl = renderIconToDataUrl(emoji, color);
+    if (dataUrl) {
+      setPreviewUrl(dataUrl);
+      setPendingAvatar(dataUrl);
+    }
   }
 
   async function handleSave() {
@@ -107,11 +119,31 @@ export function EditProfileModal({
             <button
               type="button"
               onClick={handleRemove}
-              className="ml-2 font-mono text-[10.5px] text-ink-soft uppercase hover:text-ink"
+              className="ml-2 rounded border border-line px-2.5 py-1 font-mono text-[10.5px] text-ink-soft uppercase transition-colors hover:border-ink/40 hover:bg-paper-grid hover:text-ink"
             >
               Remove
             </button>
           )}
+        </div>
+      </div>
+
+      <div className="mt-4">
+        <p className="m-0 mb-1.5 font-mono text-[10.5px] tracking-[0.08em] text-ink-soft uppercase">
+          Or choose an icon
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {AVATAR_ICONS.map(({ emoji, color }) => (
+            <button
+              key={emoji}
+              type="button"
+              onClick={() => handlePickIcon(emoji, color)}
+              style={{ background: color }}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-xl transition-opacity hover:opacity-80"
+              aria-label={`Use ${emoji} icon`}
+            >
+              {emoji}
+            </button>
+          ))}
         </div>
       </div>
 

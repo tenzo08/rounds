@@ -52,6 +52,12 @@ export function AppSidebarShell({
     setIsDrawerOpen(false);
   }
 
+  const dedication = (
+    <p className="m-0 border-t border-[#333d47] px-[22px] pt-3 font-serif text-[11.5px] italic text-binder-text/50">
+      This project is dedicated for my student nurse, Bia.
+    </p>
+  );
+
   const navLinks = (
     <nav className="flex gap-1 px-[18px] pb-2">
       <Link
@@ -115,7 +121,7 @@ export function AppSidebarShell({
         <button
           type="button"
           onClick={() => setIsEditProfileOpen(true)}
-          className="font-mono text-[10.5px] text-[#9AA1A8] uppercase transition-colors hover:text-binder-text"
+          className="rounded border border-binder-text/25 px-2.5 py-1 font-mono text-[10.5px] text-[#9AA1A8] uppercase transition-colors hover:border-binder-text/50 hover:bg-binder-soft hover:text-binder-text"
         >
           Edit profile
         </button>
@@ -178,6 +184,7 @@ export function AppSidebarShell({
             >
               {children}
             </div>
+            {dedication}
           </div>
         </div>
       )}
@@ -187,6 +194,7 @@ export function AppSidebarShell({
         {footer}
         {navLinks}
         <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+        {dedication}
       </aside>
 
       {isEditProfileOpen && (
