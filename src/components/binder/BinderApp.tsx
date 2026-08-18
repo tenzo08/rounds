@@ -11,6 +11,7 @@ import { MdImportModal } from "@/components/binder/MdImportModal";
 import { DuplicateCheckerModal } from "@/components/binder/DuplicateCheckerModal";
 import { BulkMoveModal } from "@/components/binder/BulkMoveModal";
 import { BulkShareModal } from "@/components/binder/BulkShareModal";
+import { CreateNameModal } from "@/components/binder/CreateNameModal";
 import { QuizModal, type QuizCard } from "@/components/binder/QuizModal";
 import { GroupNoteViewModal } from "@/components/groups/GroupNoteViewModal";
 import { IdleLogout } from "@/components/IdleLogout";
@@ -50,7 +51,10 @@ type ModalState =
   | { type: "quiz" }
   | { type: "bulk-move" }
   | { type: "bulk-share" }
-  | { type: "scope-share" };
+  | { type: "scope-share" }
+  | { type: "create-subject" }
+  | { type: "create-topic"; subject: string }
+  | { type: "create-folder"; subject: string; topic: string };
 
 type SearchScope = "mine" | "everywhere";
 
@@ -482,42 +486,15 @@ export function BinderApp({
   // to it (defaultSubject/defaultTopic/defaultFolder below are derived
   // straight from `selection`).
   function handleCreateSubject() {
-    const name = window.prompt("New subject:")?.trim();
-    if (!name) return;
-    startTransition(async () => {
-      try {
-        await createSubject(name);
-        setSelection({ type: "subject", subject: name });
-      } catch (error) {
-        setActionError(getErrorMessage(error));
-      }
-    });
+    setModalState({ type: "create-subject" });
   }
 
   function handleCreateTopic(subject: string) {
-    const name = window.prompt(`New topic in "${subject}":`)?.trim();
-    if (!name) return;
-    startTransition(async () => {
-      try {
-        await createTopic(subject, name);
-        setSelection({ type: "topic", subject, topic: name });
-      } catch (error) {
-        setActionError(getErrorMessage(error));
-      }
-    });
+    setModalState({ type: "create-topic", subject });
   }
 
   function handleCreateFolder(subject: string, topic: string) {
-    const name = window.prompt(`New folder in "${topic}":`)?.trim();
-    if (!name) return;
-    startTransition(async () => {
-      try {
-        await createFolder(subject, topic, name);
-        setSelection({ type: "folder", subject, topic, folder: name });
-      } catch (error) {
-        setActionError(getErrorMessage(error));
-      }
-    });
+    setModalState({ type: "create-folder", subject, topic });
   }
 
   return (
@@ -988,6 +965,50 @@ export function BinderApp({
           groups={groups}
           onClose={closeModal}
           onShared={closeModal}
+        />
+      )}
+
+      {modalState.type === "create-subject" && (
+        <CreateNameModal
+          title="New subject"
+          label="Subject name"
+          placeholder="e.g. Pharmacology"
+          onClose={closeModal}
+          onCreate={async (name) => {
+            await createSubject(name);
+            setSelection({ type: "subject", subject: name });
+          }}
+        />
+      )}
+
+      {modalState.type === "create-topic" && (
+        <CreateNameModal
+          title={`New topic in "${modalState.subject}"`}
+          label="Topic name"
+          placeholder="e.g. Antibiotics"
+          onClose={closeModal}
+          onCreate={async (name) => {
+            await createTopic(modalState.subject, name);
+            setSelection({ type: "topic", subject: modalState.subject, topic: name });
+          }}
+        />
+      )}
+
+      {modalState.type === "create-folder" && (
+        <CreateNameModal
+          title={`New folder in "${modalState.topic}"`}
+          label="Folder name"
+          placeholder="e.g. Prelims"
+          onClose={closeModal}
+          onCreate={async (name) => {
+            await createFolder(modalState.subject, modalState.topic, name);
+            setSelection({
+              type: "folder",
+              subject: modalState.subject,
+              topic: modalState.topic,
+              folder: name,
+            });
+          }}
         />
       )}
     </div>
