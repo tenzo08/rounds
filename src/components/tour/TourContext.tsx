@@ -11,6 +11,9 @@ interface TourContextValue {
   // open — AppSidebarShell (mounted fresh per page, so it can't hold this
   // itself) reads this to sync its own local drawer state.
   wantsDrawerOpen: boolean;
+  // Whether the current step wants the topbar's "⋮ More actions" dropdown
+  // forced open — BinderApp reads this to sync its own local menu state.
+  wantsMoreMenuOpen: boolean;
   open: () => void;
 }
 
@@ -68,6 +71,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
       value={{
         isOpen,
         wantsDrawerOpen: isOpen && !!step.sidebarChrome,
+        wantsMoreMenuOpen: isOpen && !!step.moreMenu,
         open,
       }}
     >

@@ -14,6 +14,11 @@ export interface TourStep {
   // collapsible hamburger drawer, so the tour needs to force it open for
   // this step and closed again for every other step.
   sidebarChrome?: boolean;
+  // True when the target lives inside the topbar's "⋮ More actions"
+  // dropdown — the tour forces that menu open for this step and closed
+  // again for every other step, the same way sidebarChrome does for the
+  // mobile drawer.
+  moreMenu?: boolean;
 }
 
 export const TOUR_STEPS: TourStep[] = [
@@ -56,9 +61,41 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "more-menu",
     title: "More actions",
-    body: "This menu holds the rest: uploading flashcards from a .md file, checking for duplicate cards, sharing everything at the current level into a group, and — while browsing a subject, topic, or folder — renaming or deleting it.",
+    body: "Tap here for everything else — let's look inside.",
     target: "more-menu-button",
     route: "/",
+  },
+  {
+    id: "more-menu-select",
+    title: "Select",
+    body: "Turns on checkboxes across your cards so you can move or share a batch of them at once, or delete several in one go.",
+    target: "select-toggle-button",
+    route: "/",
+    moreMenu: true,
+  },
+  {
+    id: "more-menu-upload",
+    title: "Upload .md",
+    body: "Paste your notes into an LLM using the built-in prompt, save its reply as a .md file, then upload it here — it's parsed into candidate flashcards you review and check off before they're added.",
+    target: "upload-md-menu-item",
+    route: "/",
+    moreMenu: true,
+  },
+  {
+    id: "more-menu-duplicates",
+    title: "Check duplicates",
+    body: "Scans your whole binder — and everything shared with you — for flashcards that cover the same term, so you can clean up repeats.",
+    target: "check-duplicates-menu-item",
+    route: "/",
+    moreMenu: true,
+  },
+  {
+    id: "more-menu-share",
+    title: "Share to group",
+    body: "Shares every card at whatever level you're currently browsing — all of them, a whole subject, or a whole topic — into a group in one step, instead of sharing cards one at a time.",
+    target: "scope-share-menu-item",
+    route: "/",
+    moreMenu: true,
   },
   {
     id: "search",

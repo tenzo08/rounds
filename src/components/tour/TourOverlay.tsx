@@ -23,10 +23,15 @@ interface Rect {
 
 const SPOTLIGHT_PADDING = 8;
 const CARD_WIDTH = 340;
-const CARD_MARGIN = 12;
+// Minimum breathing room kept between the card and the viewport edge —
+// generous on purpose so a spotlighted element near a corner (the "⋮"
+// menu, the hamburger button) never leaves the card hugging the edge.
+const CARD_MARGIN = 20;
 // Roughly how tall the tooltip card is — used to decide whether it fits
-// below the spotlighted element or needs to flip above it.
-const CARD_HEIGHT_ESTIMATE = 210;
+// below the spotlighted element or needs to flip above it. Deliberately
+// generous (real cards are usually shorter) so a step with a longer body
+// doesn't get placed somewhere it'll actually overflow the viewport.
+const CARD_HEIGHT_ESTIMATE = 260;
 
 // The sidebar footer/nav markup is rendered twice (once inside the mobile
 // drawer, once in the always-present desktop aside), so more than one

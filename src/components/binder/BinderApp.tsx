@@ -12,6 +12,8 @@ import { DuplicateCheckerModal } from "@/components/binder/DuplicateCheckerModal
 import { BulkMoveModal } from "@/components/binder/BulkMoveModal";
 import { BulkShareModal } from "@/components/binder/BulkShareModal";
 import { CreateNameModal } from "@/components/binder/CreateNameModal";
+import { ConfirmModal } from "@/components/binder/ConfirmModal";
+import { useTour } from "@/components/tour/TourContext";
 import { QuizModal, type QuizCard } from "@/components/binder/QuizModal";
 import { GroupNoteViewModal } from "@/components/groups/GroupNoteViewModal";
 import { IdleLogout } from "@/components/IdleLogout";
@@ -54,7 +56,15 @@ type ModalState =
   | { type: "scope-share" }
   | { type: "create-subject" }
   | { type: "create-topic"; subject: string }
-  | { type: "create-folder"; subject: string; topic: string };
+  | { type: "create-folder"; subject: string; topic: string }
+  | {
+      type: "confirm";
+      title: string;
+      message: string;
+      confirmLabel?: string;
+      isDestructive?: boolean;
+      onConfirm: () => Promise<void>;
+    };
 
 type SearchScope = "mine" | "everywhere";
 
@@ -118,17 +128,33 @@ export function BinderApp({
   const [scopeShareIds, setScopeShareIds] = useState<string[]>([]);
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement>(null);
+  const tour = useTour();
 
   useEffect(() => {
     if (!isMoreOpen) return;
     function handlePointerDown(e: PointerEvent) {
+      // The tour is driving the menu open for one of its own steps — its
+      // full-screen click-catcher already owns dismiss/advance, so don't
+      // let this listener race it and snap the menu shut underneath.
+      if (tour.wantsMoreMenuOpen) return;
       if (!moreMenuRef.current?.contains(e.target as Node)) {
         setIsMoreOpen(false);
       }
     }
     document.addEventListener("pointerdown", handlePointerDown);
     return () => document.removeEventListener("pointerdown", handlePointerDown);
-  }, [isMoreOpen]);
+  }, [isMoreOpen, tour.wantsMoreMenuOpen]);
+
+  // Mirrors AppSidebarShell's drawer-sync effect: force this menu open for
+  // a tour step that points inside it, closed for every other step, and
+  // closed once the tour ends — deferred a tick so this never becomes a
+  // synchronous setState-in-effect.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsMoreOpen(tour.isOpen ? tour.wantsMoreMenuOpen : false);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [tour.isOpen, tour.wantsMoreMenuOpen]);
 
   const noSearchQuery = searchQuery.trim().length === 0;
   const browsingSubject =
@@ -268,28 +294,23 @@ export function BinderApp({
 
   function handleBulkDelete() {
     if (selectedIds.size === 0) return;
-    if (
-      !window.confirm(
-        `Delete ${selectedIds.size} flashcard${selectedIds.size === 1 ? "" : "s"}? This cannot be undone.`,
-      )
-    ) {
-      return;
-    }
-    startTransition(async () => {
-      try {
+    setModalState({
+      type: "confirm",
+      title: "Delete flashcards",
+      message: `Delete ${selectedIds.size} flashcard${selectedIds.size === 1 ? "" : "s"}? This cannot be undone.`,
+      onConfirm: async () => {
         await bulkDeleteNotes(Array.from(selectedIds));
         setSelectedIds(new Set());
         setIsSelectMode(false);
-      } catch (error) {
-        setActionError(getErrorMessage(error));
-      }
+      },
     });
   }
 
   // The three-dot menu's rename/delete actions target whichever level is
-  // currently being browsed (Subject/Topic/Folder) — same window.prompt/
-  // window.confirm pattern either way, just resolving a longer ancestor
-  // path the deeper the current selection is.
+  // currently being browsed (Subject/Topic/Folder) — same window.prompt
+  // pattern either way, just resolving a longer ancestor path the deeper
+  // the current selection is. Delete goes through the shared "confirm"
+  // modal state instead.
   function handleRename() {
     if (selection.type === "subject") {
       const nextName = window
@@ -350,41 +371,31 @@ export function BinderApp({
   function handleDeleteSelection() {
     if (selection.type === "subject") {
       const count = subjects.find((s) => s.name === selection.subject)?.count ?? 0;
-      if (
-        !window.confirm(
-          `Delete the "${selection.subject}" subject? This deletes all ${count} flashcard${count === 1 ? "" : "s"} in it, across every topic and folder. This cannot be undone.`,
-        )
-      ) {
-        return;
-      }
-      startTransition(async () => {
-        try {
-          await deleteSubject(selection.subject);
+      const subject = selection.subject;
+      setModalState({
+        type: "confirm",
+        title: "Delete subject",
+        message: `Delete the "${subject}" subject? This deletes all ${count} flashcard${count === 1 ? "" : "s"} in it, across every topic and folder. This cannot be undone.`,
+        onConfirm: async () => {
+          await deleteSubject(subject);
           setSelection({ type: "all" });
-        } catch (error) {
-          setActionError(getErrorMessage(error));
-        }
+        },
       });
     } else if (selection.type === "topic") {
       const count =
         subjects
           .find((s) => s.name === selection.subject)
           ?.topics.find((t) => t.name === selection.topic)?.count ?? 0;
-      if (
-        !window.confirm(
-          `Delete the "${selection.topic}" topic? This deletes all ${count} flashcard${count === 1 ? "" : "s"} in it, across every folder. This cannot be undone.`,
-        )
-      ) {
-        return;
-      }
       const subject = selection.subject;
-      startTransition(async () => {
-        try {
-          await deleteTopic(selection.subject, selection.topic);
+      const topic = selection.topic;
+      setModalState({
+        type: "confirm",
+        title: "Delete topic",
+        message: `Delete the "${topic}" topic? This deletes all ${count} flashcard${count === 1 ? "" : "s"} in it, across every folder. This cannot be undone.`,
+        onConfirm: async () => {
+          await deleteTopic(subject, topic);
           setSelection({ type: "subject", subject });
-        } catch (error) {
-          setActionError(getErrorMessage(error));
-        }
+        },
       });
     } else if (selection.type === "folder") {
       const count =
@@ -392,22 +403,17 @@ export function BinderApp({
           .find((s) => s.name === selection.subject)
           ?.topics.find((t) => t.name === selection.topic)
           ?.folders.find((f) => f.name === selection.folder)?.count ?? 0;
-      if (
-        !window.confirm(
-          `Delete the "${selection.folder}" folder? This deletes all ${count} flashcard${count === 1 ? "" : "s"} in it. This cannot be undone.`,
-        )
-      ) {
-        return;
-      }
       const subject = selection.subject;
       const topic = selection.topic;
-      startTransition(async () => {
-        try {
-          await deleteFolder(selection.subject, selection.topic, selection.folder);
+      const folder = selection.folder;
+      setModalState({
+        type: "confirm",
+        title: "Delete folder",
+        message: `Delete the "${folder}" folder? This deletes all ${count} flashcard${count === 1 ? "" : "s"} in it. This cannot be undone.`,
+        onConfirm: async () => {
+          await deleteFolder(subject, topic, folder);
           setSelection({ type: "topic", subject, topic });
-        } catch (error) {
-          setActionError(getErrorMessage(error));
-        }
+        },
       });
     }
   }
@@ -641,6 +647,7 @@ export function BinderApp({
                     {searchScope === "mine" && (
                       <button
                         type="button"
+                        data-tour="select-toggle-button"
                         onClick={() => {
                           toggleSelectMode();
                           setIsMoreOpen(false);
@@ -652,6 +659,7 @@ export function BinderApp({
                     )}
                     <button
                       type="button"
+                      data-tour="upload-md-menu-item"
                       onClick={() => {
                         setModalState({ type: "import" });
                         setIsMoreOpen(false);
@@ -662,6 +670,7 @@ export function BinderApp({
                     </button>
                     <button
                       type="button"
+                      data-tour="check-duplicates-menu-item"
                       onClick={() => {
                         setModalState({ type: "duplicates" });
                         setIsMoreOpen(false);
@@ -673,6 +682,7 @@ export function BinderApp({
                     {searchScope === "mine" && (
                       <button
                         type="button"
+                        data-tour="scope-share-menu-item"
                         onClick={() => {
                           handleOpenScopeShare();
                           setIsMoreOpen(false);
@@ -1009,6 +1019,17 @@ export function BinderApp({
               folder: name,
             });
           }}
+        />
+      )}
+
+      {modalState.type === "confirm" && (
+        <ConfirmModal
+          title={modalState.title}
+          message={modalState.message}
+          confirmLabel={modalState.confirmLabel}
+          isDestructive={modalState.isDestructive}
+          onClose={closeModal}
+          onConfirm={modalState.onConfirm}
         />
       )}
     </div>

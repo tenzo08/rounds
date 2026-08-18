@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { ModalShell } from "@/components/binder/ModalShell";
+import { ConfirmModal } from "@/components/binder/ConfirmModal";
 import {
   addMember,
   removeMember,
@@ -26,6 +27,12 @@ function getErrorMessage(error: unknown): string {
   return "Something went wrong. Please try again.";
 }
 
+type PendingConfirm =
+  | { type: "none" }
+  | { type: "delete-group" }
+  | { type: "leave-group" }
+  | { type: "demote-self"; userId: string; nextRole: "admin" | "member" };
+
 export function GroupSettingsModal({
   group,
   currentUserId,
@@ -43,6 +50,9 @@ export function GroupSettingsModal({
   );
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm>({
+    type: "none",
+  });
 
   const trimmedQuery = searchQuery.trim();
   const visibleResults = trimmedQuery.length >= 2 ? searchResults : [];
@@ -85,31 +95,11 @@ export function GroupSettingsModal({
   }
 
   function handleDeleteGroup() {
-    if (!window.confirm(`Delete "${group.name}"? This cannot be undone.`)) {
-      return;
-    }
-    startTransition(async () => {
-      try {
-        await deleteGroup(group.id);
-        onGroupDeleted();
-      } catch (err) {
-        setError(getErrorMessage(err));
-      }
-    });
+    setPendingConfirm({ type: "delete-group" });
   }
 
   function handleLeaveGroup() {
-    if (!window.confirm(`Leave "${group.name}"? You can rejoin only if someone adds you back.`)) {
-      return;
-    }
-    startTransition(async () => {
-      try {
-        await leaveGroup(group.id);
-        onLeft();
-      } catch (err) {
-        setError(getErrorMessage(err));
-      }
-    });
+    setPendingConfirm({ type: "leave-group" });
   }
 
   function handleAddMember(userId: string) {
@@ -136,13 +126,8 @@ export function GroupSettingsModal({
 
   function handleToggleRole(userId: string, currentRole: "admin" | "member") {
     const nextRole = currentRole === "admin" ? "member" : "admin";
-    if (
-      userId === currentUserId &&
-      nextRole === "member" &&
-      !window.confirm(
-        "Give up your admin rights in this group? You'll keep read/write access to your own notes, but won't be able to manage members or rename/delete the group unless another admin promotes you again.",
-      )
-    ) {
+    if (userId === currentUserId && nextRole === "member") {
+      setPendingConfirm({ type: "demote-self", userId, nextRole });
       return;
     }
     startTransition(async () => {
@@ -155,6 +140,7 @@ export function GroupSettingsModal({
   }
 
   return (
+    <>
     <ModalShell accentColor="#1E2823" onClose={onClose}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         {isEditingName ? (
@@ -329,5 +315,45 @@ export function GroupSettingsModal({
         </button>
       </div>
     </ModalShell>
+
+    {pendingConfirm.type === "delete-group" && (
+      <ConfirmModal
+        title="Delete group"
+        message={`Delete "${group.name}"? This cannot be undone.`}
+        onClose={() => setPendingConfirm({ type: "none" })}
+        onConfirm={async () => {
+          await deleteGroup(group.id);
+          onGroupDeleted();
+        }}
+      />
+    )}
+
+    {pendingConfirm.type === "leave-group" && (
+      <ConfirmModal
+        title="Leave group"
+        message={`Leave "${group.name}"? You can rejoin only if someone adds you back.`}
+        confirmLabel="Leave"
+        isDestructive={false}
+        onClose={() => setPendingConfirm({ type: "none" })}
+        onConfirm={async () => {
+          await leaveGroup(group.id);
+          onLeft();
+        }}
+      />
+    )}
+
+    {pendingConfirm.type === "demote-self" && (
+      <ConfirmModal
+        title="Give up admin rights"
+        message="Give up your admin rights in this group? You'll keep read/write access to your own notes, but won't be able to manage members or rename/delete the group unless another admin promotes you again."
+        confirmLabel="Give up admin"
+        isDestructive={false}
+        onClose={() => setPendingConfirm({ type: "none" })}
+        onConfirm={async () => {
+          await setMemberRole(group.id, pendingConfirm.userId, pendingConfirm.nextRole);
+        }}
+      />
+    )}
+    </>
   );
 }

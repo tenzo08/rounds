@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ModalShell } from "@/components/binder/ModalShell";
+import { ConfirmModal } from "@/components/binder/ConfirmModal";
 import { findDuplicateFocusGroups, type DuplicateGroup } from "@/lib/actions/duplicates";
 import { deleteNote } from "@/lib/actions/notes";
 
@@ -18,6 +19,7 @@ export function DuplicateCheckerModal({ onClose }: DuplicateCheckerModalProps) {
   const [groups, setGroups] = useState<DuplicateGroup[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
@@ -30,13 +32,10 @@ export function DuplicateCheckerModal({ onClose }: DuplicateCheckerModalProps) {
   }, [reloadKey]);
 
   async function handleDelete(noteId: string) {
-    if (!window.confirm("Delete this flashcard? This cannot be undone.")) return;
     setDeletingId(noteId);
     try {
       await deleteNote(noteId);
       setReloadKey((k) => k + 1);
-    } catch (err) {
-      setError(getErrorMessage(err));
     } finally {
       setDeletingId(null);
     }
@@ -86,7 +85,7 @@ export function DuplicateCheckerModal({ onClose }: DuplicateCheckerModalProps) {
                     {entry.isOwnNote && (
                       <button
                         type="button"
-                        onClick={() => handleDelete(entry.noteId)}
+                        onClick={() => setConfirmDeleteId(entry.noteId)}
                         disabled={deletingId === entry.noteId}
                         className="shrink-0 rounded border border-line px-2.5 py-1 text-xs font-medium text-c-crit hover:bg-card disabled:opacity-50"
                       >
@@ -110,6 +109,15 @@ export function DuplicateCheckerModal({ onClose }: DuplicateCheckerModalProps) {
           Close
         </button>
       </div>
+
+      {confirmDeleteId && (
+        <ConfirmModal
+          title="Delete flashcard"
+          message="Delete this flashcard? This cannot be undone."
+          onClose={() => setConfirmDeleteId(null)}
+          onConfirm={() => handleDelete(confirmDeleteId)}
+        />
+      )}
     </ModalShell>
   );
 }
