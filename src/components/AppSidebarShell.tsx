@@ -35,6 +35,25 @@ function HelpIcon() {
   );
 }
 
+function EditIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    </svg>
+  );
+}
+
+function LogoutIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <polyline points="16 17 21 12 16 7" />
+      <line x1="21" y1="12" x2="9" y2="12" />
+    </svg>
+  );
+}
+
 export function AppSidebarShell({
   activeNav,
   userName,
@@ -138,38 +157,46 @@ export function AppSidebarShell({
             {userEmail}
           </p>
         </div>
+      </div>
+      {/* One consistent row of icon buttons instead of two rows mixing
+          bordered text buttons and icon buttons — frequent actions on the
+          left, Sign out deliberately separated on the right since it's the
+          one rare/consequential control here. */}
+      <div className="mt-3 flex items-center gap-0.5">
+        <button
+          type="button"
+          data-tour="edit-profile-button"
+          onClick={() => setIsEditProfileOpen(true)}
+          title="Edit profile"
+          aria-label="Edit profile"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded text-binder-text/70 transition-colors duration-150 hover:bg-binder-soft hover:text-binder-text active:scale-[0.94]"
+        >
+          <EditIcon />
+        </button>
+        <ThemeToggle />
+        <button
+          type="button"
+          data-tour="help-button"
+          onClick={() => tour.open()}
+          title="Help"
+          aria-label="Open help tour"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded text-binder-text/70 transition-colors duration-150 hover:bg-binder-soft hover:text-binder-text active:scale-[0.94]"
+        >
+          <HelpIcon />
+        </button>
+        <div className="flex-1" />
         <button
           type="button"
           onClick={() => {
             closeDrawer();
             onSignOut();
           }}
-          className="shrink-0 rounded border border-c-crit/40 px-2.5 py-1 font-mono text-[10px] text-c-crit uppercase transition-colors hover:border-c-crit hover:bg-c-crit/10"
+          title="Sign out"
+          aria-label="Sign out"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded text-binder-text/50 transition-colors duration-150 hover:bg-c-crit/10 hover:text-c-crit active:scale-[0.94]"
         >
-          Sign out
+          <LogoutIcon />
         </button>
-      </div>
-      <div className="mt-2.5 flex items-center justify-between">
-        <button
-          type="button"
-          data-tour="edit-profile-button"
-          onClick={() => setIsEditProfileOpen(true)}
-          className="rounded border border-binder-text/25 px-2.5 py-1 font-mono text-[10.5px] text-[#9AA1A8] uppercase transition-colors hover:border-binder-text/50 hover:bg-binder-soft hover:text-binder-text"
-        >
-          Edit profile
-        </button>
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            data-tour="help-button"
-            onClick={() => tour.open()}
-            aria-label="Open help tour"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded text-binder-text/70 transition-colors hover:bg-binder-soft hover:text-binder-text"
-          >
-            <HelpIcon />
-          </button>
-          <ThemeToggle />
-        </div>
       </div>
     </div>
   );
@@ -184,7 +211,7 @@ export function AppSidebarShell({
           aria-label="Open menu"
           aria-expanded={isDrawerOpen}
           aria-controls="app-drawer"
-          className="-ml-2 flex h-11 w-11 items-center justify-center"
+          className="-ml-2 flex h-11 w-11 items-center justify-center rounded transition-colors duration-150 active:scale-[0.94] active:bg-binder-soft"
         >
           <HamburgerIcon />
         </button>
@@ -212,7 +239,7 @@ export function AppSidebarShell({
               type="button"
               onClick={closeDrawer}
               aria-label="Close menu"
-              className="absolute top-3 right-3 flex h-8 w-8 items-center justify-center rounded text-lg text-binder-text/70 hover:bg-binder-soft"
+              className="absolute top-3 right-3 flex h-9 w-9 items-center justify-center rounded text-lg text-binder-text/70 transition-colors duration-150 hover:bg-binder-soft active:scale-[0.94]"
             >
               ×
             </button>

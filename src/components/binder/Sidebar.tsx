@@ -110,8 +110,9 @@ export function Sidebar({
             <button
               type="button"
               onClick={onAddSubject}
+              title="New subject"
               aria-label="New subject"
-              className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-binder-text/70 hover:bg-binder-soft hover:text-binder-text"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded text-[15px] text-binder-text/70 transition-colors duration-150 hover:bg-binder-soft hover:text-binder-text active:scale-[0.94]"
             >
               +
             </button>
