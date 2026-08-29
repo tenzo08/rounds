@@ -1,5 +1,7 @@
 {
   "crons": [
-    { "path": "/api/keepalive", "schedule": "0 0 * * *" }
+    { "path": "/api/keepalive?slot=00", "schedule": "0 0 * * *" },
+    { "path": "/api/keepalive?slot=08", "schedule": "0 8 * * *" },
+    { "path": "/api/keepalive?slot=16", "schedule": "0 16 * * *" }
   ]
 }
