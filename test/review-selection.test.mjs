@@ -2,7 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  IMPORT_BATCH_SIZE,
+  chunkForImport,
   getSelectionSummary,
+  markItemsImported,
+  runSequentialImport,
   setAllIncluded,
 } from "../src/lib/reviewSelection.ts";
 
@@ -34,4 +38,74 @@ test("selection summary represents none, some, and all selected cards", () => {
     allSelected: true,
     partiallySelected: false,
   });
+});
+
+test("1,097 cards are split into automatic batches of at most 200", () => {
+  const cards = Array.from({ length: 1_097 }, (_, index) => ({ index }));
+
+  const batches = chunkForImport(cards);
+
+  assert.equal(IMPORT_BATCH_SIZE, 200);
+  assert.deepEqual(
+    batches.map((batch) => batch.length),
+    [200, 200, 200, 200, 200, 97],
+  );
+  assert.deepEqual(batches.flat(), cards);
+});
+
+test("successfully imported cards cannot be selected again", () => {
+  const cards = [
+    { focus: "A", include: true, imported: false },
+    { focus: "B", include: true, imported: false },
+    { focus: "C", include: true, imported: false },
+  ];
+
+  const afterBatch = markItemsImported(cards, [0, 1]);
+  const afterSelectAll = setAllIncluded(afterBatch, true);
+
+  assert.deepEqual(
+    afterSelectAll.map(({ include, imported }) => ({ include, imported })),
+    [
+      { include: false, imported: true },
+      { include: false, imported: true },
+      { include: true, imported: false },
+    ],
+  );
+});
+
+test("select-all state ignores cards that were already imported", () => {
+  assert.deepEqual(
+    getSelectionSummary([
+      { include: false, imported: true },
+      { include: true, imported: false },
+    ]),
+    {
+      selectedCount: 1,
+      allSelected: true,
+      partiallySelected: false,
+    },
+  );
+});
+
+test("large imports run every batch sequentially without confirmation", async () => {
+  const cards = Array.from({ length: 1_097 }, (_, index) => index);
+  const batchStarts = [];
+  const progress = [];
+  let activeBatches = 0;
+
+  const result = await runSequentialImport(
+    cards,
+    async (batch) => {
+      activeBatches += 1;
+      assert.equal(activeBatches, 1);
+      batchStarts.push(batch[0]);
+      await Promise.resolve();
+      activeBatches -= 1;
+    },
+    (imported, total) => progress.push([imported, total]),
+  );
+
+  assert.deepEqual(batchStarts, [0, 200, 400, 600, 800, 1_000]);
+  assert.deepEqual(progress.at(-1), [1_097, 1_097]);
+  assert.deepEqual(result, { imported: 1_097, total: 1_097 });
 });

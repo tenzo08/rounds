@@ -9,10 +9,15 @@ import {
   normalizeFocus,
   type ParsedFlashcard,
 } from "@/lib/mdFlashcards";
-import { importFlashcards } from "@/lib/actions/mdImport";
+import {
+  importFlashcards,
+  refreshFlashcardImports,
+} from "@/lib/actions/mdImport";
 import { checkDuplicateFocuses } from "@/lib/actions/duplicates";
 import {
   getSelectionSummary,
+  markItemsImported,
+  runSequentialImport,
   setAllIncluded,
 } from "@/lib/reviewSelection";
 import type { SubjectSummaryDTO } from "@/lib/types";
@@ -29,6 +34,7 @@ interface MdImportModalProps {
 interface ReviewCard extends ParsedFlashcard {
   duplicateOf: string | null;
   include: boolean;
+  imported: boolean;
 }
 
 function getErrorMessage(error: unknown): string {
@@ -53,11 +59,17 @@ export function MdImportModal({
   const [error, setError] = useState<string | null>(null);
   const [isChecking, setIsChecking] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState<{
+    imported: number;
+    total: number;
+  } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const selectAllRef = useRef<HTMLInputElement>(null);
   const selectionSummary = reviewCards
     ? getSelectionSummary(reviewCards)
     : null;
+  const importedCount = reviewCards?.filter((card) => card.imported).length ?? 0;
+  const remainingCount = (reviewCards?.length ?? 0) - importedCount;
 
   useEffect(() => {
     if (selectAllRef.current) {
@@ -105,7 +117,12 @@ export function MdImportModal({
         parsed.map((card) => {
           const duplicateOf =
             duplicateMap.get(normalizeFocus(card.focus)) ?? null;
-          return { ...card, duplicateOf, include: !duplicateOf };
+          return {
+            ...card,
+            duplicateOf,
+            include: !duplicateOf,
+            imported: false,
+          };
         }),
       );
     } catch (err) {
@@ -132,30 +149,83 @@ export function MdImportModal({
       setError("Pick a subject, topic, and folder for these flashcards first.");
       return;
     }
-    const selected = reviewCards.filter((c) => c.include);
+    const selected = reviewCards
+      .map((card, index) => ({ card, index }))
+      .filter(({ card }) => card.include && !card.imported);
     if (selected.length === 0) {
       setError("Check at least one flashcard to import.");
       return;
     }
+    const targetTotal = importedCount + selected.length;
+    let importedThisAttempt = 0;
+    let allBatchesImported = false;
     setIsImporting(true);
+    setImportProgress({ imported: importedCount, total: targetTotal });
     setError(null);
     try {
-      await importFlashcards(
-        trimmedSubject,
-        trimmedTopic,
-        trimmedFolder,
-        selected.map(({ focus, description }) => ({ focus, description })),
+      await runSequentialImport(
+        selected,
+        async (batch) => {
+          await importFlashcards(
+            trimmedSubject,
+            trimmedTopic,
+            trimmedFolder,
+            batch.map(({ card: { focus, description } }) => ({
+              focus,
+              description,
+            })),
+            false,
+          );
+        },
+        (imported, total, batch) => {
+          importedThisAttempt = imported;
+          setImportProgress({
+            imported: importedCount + imported,
+            total: importedCount + total,
+          });
+          setReviewCards((cards) =>
+            cards
+              ? markItemsImported(
+                  cards,
+                  batch.map(({ index }) => index),
+                )
+              : cards,
+          );
+        },
       );
+      allBatchesImported = true;
+      await refreshFlashcardImports();
       onImported();
     } catch (err) {
-      setError(getErrorMessage(err));
+      if (allBatchesImported) {
+        setError(
+          `All ${targetTotal} flashcards were imported, but the binder could not refresh. ` +
+            "Close this window and reload the page to see them.",
+        );
+      } else if (importedThisAttempt > 0) {
+        try {
+          await refreshFlashcardImports();
+        } catch {
+          // Imported rows remain saved even if refreshing the page fails.
+        }
+        const importedTotal = importedCount + importedThisAttempt;
+        setError(
+          `${importedTotal} of ${targetTotal} flashcards were imported. ` +
+            "Press Retry remaining to continue with the rest.",
+        );
+      } else {
+        setError(getErrorMessage(err));
+      }
     } finally {
       setIsImporting(false);
     }
   }
 
   return (
-    <ModalShell accentColor="#3A8F8C" onClose={onClose}>
+    <ModalShell
+      accentColor="#3A8F8C"
+      onClose={isImporting ? () => undefined : onClose}
+    >
       <h3 className="m-0 font-serif text-[19px] text-ink">
         Upload flashcards from an .md file
       </h3>
@@ -203,6 +273,7 @@ export function MdImportModal({
             const file = e.target.files?.[0];
             if (file) void handleFileSelected(file);
           }}
+          disabled={isImporting}
           className="block w-full text-[12.8px] text-ink-soft file:mr-3 file:rounded file:border file:border-line file:bg-card file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-ink"
         />
         {fileName && (
@@ -224,6 +295,7 @@ export function MdImportModal({
                 ref={selectAllRef}
                 type="checkbox"
                 checked={selectionSummary?.allSelected ?? false}
+                disabled={isImporting || remainingCount === 0}
                 onChange={(event) =>
                   setReviewCards((cards) =>
                     cards
@@ -236,8 +308,8 @@ export function MdImportModal({
               Select all
             </label>
             <span className="font-mono text-[10.5px] text-ink-soft">
-              {selectionSummary?.selectedCount ?? 0} of {reviewCards.length}{" "}
-              selected
+              {selectionSummary?.selectedCount ?? 0} of {remainingCount} selected
+              {importedCount > 0 ? ` · ${importedCount} imported` : ""}
             </span>
           </div>
           {reviewCards.map((card, idx) => (
@@ -248,6 +320,7 @@ export function MdImportModal({
               <input
                 type="checkbox"
                 checked={card.include}
+                disabled={isImporting || card.imported}
                 onChange={() => toggleInclude(idx)}
                 className="mt-0.5 h-3.5 w-3.5 shrink-0"
               />
@@ -258,12 +331,16 @@ export function MdImportModal({
                 <p className="m-0 line-clamp-2 text-[12px] text-ink-soft">
                   {card.description}
                 </p>
-                {card.duplicateOf && (
+                {card.imported ? (
+                  <p className="m-0 mt-1 text-[11px] font-semibold text-c-psych">
+                    Imported in this upload.
+                  </p>
+                ) : card.duplicateOf ? (
                   <p className="m-0 mt-1 text-[11px] text-c-crit">
                     Possible duplicate of “{card.duplicateOf}” — unchecked by
                     default, but you can still import it.
                   </p>
-                )}
+                ) : null}
               </div>
             </label>
           ))}
@@ -272,21 +349,44 @@ export function MdImportModal({
 
       {error && <p className="mt-3 text-sm text-c-crit">{error}</p>}
 
+      {isImporting && importProgress && (
+        <div className="mt-3" role="status" aria-live="polite">
+          <p className="m-0 text-[12.8px] font-semibold text-ink">
+            Importing {importProgress.imported} of {importProgress.total}…
+          </p>
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-paper-grid">
+            <div
+              className="h-full bg-c-psych transition-[width] duration-200"
+              style={{
+                width: `${(importProgress.imported / importProgress.total) * 100}%`,
+              }}
+            />
+          </div>
+        </div>
+      )}
+
       <div className="mt-[22px] flex justify-end gap-2">
         <button
           type="button"
           onClick={onClose}
+          disabled={isImporting}
           className="rounded border border-line px-4 py-2.5 text-[13.5px] font-semibold text-ink transition-opacity hover:opacity-88"
         >
           Cancel
         </button>
         <button
           type="button"
-          onClick={handleImport}
+          onClick={remainingCount === 0 ? onClose : handleImport}
           disabled={!reviewCards || isImporting}
           className="rounded bg-ink px-4 py-2.5 text-[13.5px] font-semibold text-paper transition-opacity hover:opacity-88 disabled:opacity-50"
         >
-          {isImporting ? "Importing…" : "Import checked"}
+          {isImporting
+            ? `Importing ${importProgress?.imported ?? 0} of ${importProgress?.total ?? 0}…`
+            : remainingCount === 0
+              ? "Close"
+              : importedCount > 0
+              ? "Retry remaining"
+              : "Import checked"}
         </button>
       </div>
     </ModalShell>

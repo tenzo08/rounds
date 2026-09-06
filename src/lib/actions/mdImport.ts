@@ -24,6 +24,7 @@ export async function importFlashcards(
   topic: string,
   folder: string,
   cards: { focus: string; description: string }[],
+  revalidateAfterImport = true,
 ): Promise<{ created: number }> {
   const userId = await requireUserId();
   const validSubject = z.string().trim().min(1).max(60).parse(subject);
@@ -47,6 +48,13 @@ export async function importFlashcards(
     })),
   });
 
-  revalidatePath("/");
+  if (revalidateAfterImport) {
+    revalidatePath("/");
+  }
   return { created: validCards.length };
+}
+
+export async function refreshFlashcardImports(): Promise<void> {
+  await requireUserId();
+  revalidatePath("/");
 }
