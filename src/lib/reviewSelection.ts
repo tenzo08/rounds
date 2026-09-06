@@ -3,30 +3,6 @@ interface SelectableItem {
   imported?: boolean;
 }
 
-export const IMPORT_BATCH_SIZE = 200;
-
-export function chunkForImport<T>(items: T[]): T[][] {
-  const batches: T[][] = [];
-  for (let index = 0; index < items.length; index += IMPORT_BATCH_SIZE) {
-    batches.push(items.slice(index, index + IMPORT_BATCH_SIZE));
-  }
-  return batches;
-}
-
-export async function runSequentialImport<T>(
-  items: T[],
-  importBatch: (batch: T[]) => Promise<void>,
-  onProgress?: (imported: number, total: number, batch: T[]) => void,
-): Promise<{ imported: number; total: number }> {
-  let imported = 0;
-  for (const batch of chunkForImport(items)) {
-    await importBatch(batch);
-    imported += batch.length;
-    onProgress?.(imported, items.length, batch);
-  }
-  return { imported, total: items.length };
-}
-
 export function setAllIncluded<T extends SelectableItem>(
   items: T[],
   include: boolean,

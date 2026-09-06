@@ -1,5 +1,6 @@
 "use server";
 
+import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { normalizeFocus } from "@/lib/mdFlashcards";
@@ -41,7 +42,12 @@ export async function checkDuplicateFocuses(
   focuses: string[],
 ): Promise<DuplicateMatch[]> {
   const userId = await requireUserId();
-  const normalizedTargets = new Set(focuses.map(normalizeFocus));
+  const validFocuses = z
+    .array(z.string().trim().min(1).max(120))
+    .min(1)
+    .max(200)
+    .parse(focuses);
+  const normalizedTargets = new Set(validFocuses.map(normalizeFocus));
   if (normalizedTargets.size === 0) return [];
 
   const [ownNotes, sharedNotes] = await Promise.all([
@@ -66,9 +72,10 @@ export async function checkDuplicateFocuses(
   ]);
 
   const matches: DuplicateMatch[] = [];
+  const matchedFocuses = new Set<string>();
   for (const note of ownNotes) {
     const normalized = normalizeFocus(note.focus);
-    if (normalizedTargets.has(normalized)) {
+    if (normalizedTargets.has(normalized) && !matchedFocuses.has(normalized)) {
       matches.push({
         focus: normalized,
         existingSubject: note.folder.topic.subject.name,
@@ -76,11 +83,12 @@ export async function checkDuplicateFocuses(
         existingFolder: note.folder.name,
         existingOwnerName: "you",
       });
+      matchedFocuses.add(normalized);
     }
   }
   for (const note of sharedNotes) {
     const normalized = normalizeFocus(note.focus);
-    if (normalizedTargets.has(normalized)) {
+    if (normalizedTargets.has(normalized) && !matchedFocuses.has(normalized)) {
       matches.push({
         focus: normalized,
         existingSubject: note.folder.topic.subject.name,
@@ -88,6 +96,7 @@ export async function checkDuplicateFocuses(
         existingFolder: note.folder.name,
         existingOwnerName: note.owner.displayName,
       });
+      matchedFocuses.add(normalized);
     }
   }
   return matches;

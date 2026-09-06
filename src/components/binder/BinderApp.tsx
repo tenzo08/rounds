@@ -25,6 +25,7 @@ import {
   deleteNote,
   updateNote,
   bulkDeleteNotes,
+  finalizeBulkNoteChanges,
   createSubject,
   createTopic,
   createFolder,
@@ -36,6 +37,7 @@ import {
   renameFolder,
   type NoteInput,
 } from "@/lib/actions/notes";
+import { runSequentialBatches } from "@/lib/bulkOperations";
 import type {
   GroupSummaryDTO,
   NoteDTO,
@@ -63,7 +65,9 @@ type ModalState =
       message: string;
       confirmLabel?: string;
       isDestructive?: boolean;
-      onConfirm: () => Promise<void>;
+      onConfirm: (
+        reportProgress: (completed: number, total: number) => void,
+      ) => Promise<void>;
     };
 
 type SearchScope = "mine" | "everywhere";
@@ -294,12 +298,39 @@ export function BinderApp({
 
   function handleBulkDelete() {
     if (selectedIds.size === 0) return;
+    const total = selectedIds.size;
+    let remainingIds = Array.from(selectedIds);
     setModalState({
       type: "confirm",
       title: "Delete flashcards",
       message: `Delete ${selectedIds.size} flashcard${selectedIds.size === 1 ? "" : "s"}? This cannot be undone.`,
-      onConfirm: async () => {
-        await bulkDeleteNotes(Array.from(selectedIds));
+      onConfirm: async (reportProgress) => {
+        const completedBefore = total - remainingIds.length;
+        let completedThisAttempt = 0;
+        try {
+          await runSequentialBatches(
+            remainingIds,
+            async (batch) => {
+              await bulkDeleteNotes(batch, false);
+            },
+            (completed) => {
+              completedThisAttempt = completed;
+              reportProgress(completedBefore + completed, total);
+            },
+          );
+        } catch (error) {
+          remainingIds = remainingIds.slice(completedThisAttempt);
+          if (completedThisAttempt > 0) {
+            try {
+              await finalizeBulkNoteChanges();
+            } catch {
+              // The acknowledged deletions remain saved even if refresh fails.
+            }
+          }
+          throw error;
+        }
+        remainingIds = [];
+        await finalizeBulkNoteChanges();
         setSelectedIds(new Set());
         setIsSelectMode(false);
       },

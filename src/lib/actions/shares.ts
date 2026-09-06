@@ -82,9 +82,11 @@ export async function setNoteShare(
 export async function bulkShareNotes(
   noteIds: string[],
   groupId: string,
+  revalidateAfterShare = true,
 ): Promise<{ shared: number }> {
   const userId = await requireUserId();
   const validIds = z.array(z.string()).min(1).max(200).parse(noteIds);
+  const shouldRevalidate = z.boolean().parse(revalidateAfterShare);
 
   const membership = await prisma.groupMembership.findUnique({
     where: { groupId_userId: { groupId, userId } },
@@ -101,16 +103,30 @@ export async function bulkShareNotes(
     return { shared: 0 };
   }
 
-  for (const note of owned) {
-    await prisma.noteShare.upsert({
-      where: { noteId_groupId: { noteId: note.id, groupId } },
-      update: {},
-      create: { noteId: note.id, groupId },
-    });
+  await prisma.noteShare.createMany({
+    data: owned.map((note) => ({ noteId: note.id, groupId })),
+    skipDuplicates: true,
+  });
+
+  if (shouldRevalidate) {
+    revalidatePath("/");
+    revalidatePath(`/groups/${groupId}`);
+    await notifyGroupChanged(groupId);
   }
+  return { shared: owned.length };
+}
+
+export async function finalizeBulkShares(groupIds: string[]): Promise<void> {
+  const userId = await requireUserId();
+  const validGroupIds = z.array(z.string()).min(1).max(200).parse(groupIds);
+  const memberships = await prisma.groupMembership.findMany({
+    where: { userId, groupId: { in: validGroupIds } },
+    select: { groupId: true },
+  });
 
   revalidatePath("/");
-  revalidatePath(`/groups/${groupId}`);
-  await notifyGroupChanged(groupId);
-  return { shared: owned.length };
+  for (const { groupId } of memberships) {
+    revalidatePath(`/groups/${groupId}`);
+    await notifyGroupChanged(groupId);
+  }
 }

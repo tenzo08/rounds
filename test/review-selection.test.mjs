@@ -2,13 +2,15 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  IMPORT_BATCH_SIZE,
-  chunkForImport,
   getSelectionSummary,
   markItemsImported,
-  runSequentialImport,
   setAllIncluded,
 } from "../src/lib/reviewSelection.ts";
+import {
+  BULK_BATCH_SIZE,
+  chunkBulkItems,
+  runSequentialBatches,
+} from "../src/lib/bulkOperations.ts";
 
 test("select all includes duplicate and non-duplicate review cards", () => {
   const cards = [
@@ -43,9 +45,9 @@ test("selection summary represents none, some, and all selected cards", () => {
 test("1,097 cards are split into automatic batches of at most 200", () => {
   const cards = Array.from({ length: 1_097 }, (_, index) => ({ index }));
 
-  const batches = chunkForImport(cards);
+  const batches = chunkBulkItems(cards);
 
-  assert.equal(IMPORT_BATCH_SIZE, 200);
+  assert.equal(BULK_BATCH_SIZE, 200);
   assert.deepEqual(
     batches.map((batch) => batch.length),
     [200, 200, 200, 200, 200, 97],
@@ -93,7 +95,7 @@ test("large imports run every batch sequentially without confirmation", async ()
   const progress = [];
   let activeBatches = 0;
 
-  const result = await runSequentialImport(
+  const result = await runSequentialBatches(
     cards,
     async (batch) => {
       activeBatches += 1;
@@ -107,5 +109,5 @@ test("large imports run every batch sequentially without confirmation", async ()
 
   assert.deepEqual(batchStarts, [0, 200, 400, 600, 800, 1_000]);
   assert.deepEqual(progress.at(-1), [1_097, 1_097]);
-  assert.deepEqual(result, { imported: 1_097, total: 1_097 });
+  assert.deepEqual(result, { completed: 1_097, total: 1_097 });
 });

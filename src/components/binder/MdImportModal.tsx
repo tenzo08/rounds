@@ -17,9 +17,9 @@ import { checkDuplicateFocuses } from "@/lib/actions/duplicates";
 import {
   getSelectionSummary,
   markItemsImported,
-  runSequentialImport,
   setAllIncluded,
 } from "@/lib/reviewSelection";
+import { runSequentialBatches } from "@/lib/bulkOperations";
 import type { SubjectSummaryDTO } from "@/lib/types";
 
 interface MdImportModalProps {
@@ -58,6 +58,10 @@ export function MdImportModal({
   const [fileName, setFileName] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isChecking, setIsChecking] = useState(false);
+  const [checkProgress, setCheckProgress] = useState<{
+    checked: number;
+    total: number;
+  } | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [importProgress, setImportProgress] = useState<{
     imported: number;
@@ -101,9 +105,15 @@ export function MdImportModal({
       return;
     }
     setIsChecking(true);
+    setCheckProgress({ checked: 0, total: parsed.length });
     try {
-      const duplicates = await checkDuplicateFocuses(
-        parsed.map((c) => c.focus),
+      const duplicates: Awaited<ReturnType<typeof checkDuplicateFocuses>> = [];
+      await runSequentialBatches(
+        parsed.map((card) => card.focus),
+        async (batch) => {
+          duplicates.push(...(await checkDuplicateFocuses(batch)));
+        },
+        (checked, total) => setCheckProgress({ checked, total }),
       );
       const duplicateMap = new Map(
         duplicates.map((d) => [
@@ -129,6 +139,7 @@ export function MdImportModal({
       setError(getErrorMessage(err));
     } finally {
       setIsChecking(false);
+      setCheckProgress(null);
     }
   }
 
@@ -163,7 +174,7 @@ export function MdImportModal({
     setImportProgress({ imported: importedCount, total: targetTotal });
     setError(null);
     try {
-      await runSequentialImport(
+      await runSequentialBatches(
         selected,
         async (batch) => {
           await importFlashcards(
@@ -284,7 +295,10 @@ export function MdImportModal({
       </div>
 
       {isChecking && (
-        <p className="mt-3 text-[12.8px] text-ink-soft">Checking for duplicates…</p>
+        <p className="mt-3 text-[12.8px] text-ink-soft" role="status">
+          Checking {checkProgress?.checked ?? 0} of {checkProgress?.total ?? 0}{" "}
+          flashcards for duplicates…
+        </p>
       )}
 
       {reviewCards && (

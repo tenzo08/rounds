@@ -13,7 +13,9 @@ interface ConfirmModalProps {
   // consequential-but-not-destructive ones (e.g. leaving a group).
   isDestructive?: boolean;
   onClose: () => void;
-  onConfirm: () => Promise<void>;
+  onConfirm: (
+    reportProgress: (completed: number, total: number) => void,
+  ) => Promise<void>;
 }
 
 function getErrorMessage(error: unknown): string {
@@ -35,12 +37,17 @@ export function ConfirmModal({
 }: ConfirmModalProps) {
   const [error, setError] = useState<string | null>(null);
   const [isConfirming, setIsConfirming] = useState(false);
+  const [progress, setProgress] = useState<{
+    completed: number;
+    total: number;
+  } | null>(null);
 
   async function handleConfirm() {
     setIsConfirming(true);
     setError(null);
+    setProgress(null);
     try {
-      await onConfirm();
+      await onConfirm((completed, total) => setProgress({ completed, total }));
       onClose();
     } catch (err) {
       setError(getErrorMessage(err));
@@ -50,16 +57,30 @@ export function ConfirmModal({
   }
 
   return (
-    <ModalShell accentColor={isDestructive ? "#B33A3A" : "#1E2823"} onClose={onClose}>
+    <ModalShell
+      accentColor={isDestructive ? "#B33A3A" : "#1E2823"}
+      onClose={isConfirming ? () => undefined : onClose}
+    >
       <h3 className="m-0 pr-6 font-serif text-[19px] text-ink">{title}</h3>
       <p className="mt-2 text-[13.5px] leading-[1.5] text-ink-soft">{message}</p>
 
       {error && <p className="mt-3 text-xs text-c-crit">{error}</p>}
 
+      {isConfirming && progress && (
+        <p
+          className="mt-3 text-xs font-semibold text-ink"
+          role="status"
+          aria-live="polite"
+        >
+          Working on {progress.completed} of {progress.total}…
+        </p>
+      )}
+
       <div className="mt-[22px] flex justify-end gap-2">
         <button
           type="button"
           onClick={onClose}
+          disabled={isConfirming}
           className="rounded border border-line px-4 py-2.5 text-[13.5px] font-semibold text-ink transition-opacity hover:opacity-88"
         >
           {cancelLabel}
@@ -73,7 +94,11 @@ export function ConfirmModal({
             (isDestructive ? "bg-c-crit text-white" : "bg-ink text-paper")
           }
         >
-          {isConfirming ? "Working…" : confirmLabel}
+          {isConfirming && progress
+            ? `Working ${progress.completed} of ${progress.total}…`
+            : isConfirming
+              ? "Working…"
+              : confirmLabel}
         </button>
       </div>
     </ModalShell>

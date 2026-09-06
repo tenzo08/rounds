@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "node --no-warnings --experimental-strip-types test/idle-session.test.mjs && node --no-warnings --experimental-strip-types test/review-selection.test.mjs && node --no-warnings test/authenticated-surfaces.test.mjs",
+    "test": "node --no-warnings --experimental-strip-types test/idle-session.test.mjs && node --no-warnings --experimental-strip-types test/bulk-operations.test.mjs && node --no-warnings --experimental-strip-types test/review-selection.test.mjs && node --no-warnings test/authenticated-surfaces.test.mjs",
     "lint": "eslint",
     "postinstall": "prisma generate"
   },

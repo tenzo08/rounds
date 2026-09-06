@@ -168,6 +168,7 @@ const bulkMoveSchema = z.object({
   subject: z.string().trim().min(1, "Subject is required").max(60),
   topic: z.string().trim().min(1, "Topic is required").max(60),
   folder: z.string().trim().min(1, "Folder is required").max(60),
+  revalidateAfterMove: z.boolean().optional(),
 });
 
 export async function bulkMoveNotes(input: {
@@ -175,6 +176,7 @@ export async function bulkMoveNotes(input: {
   subject: string;
   topic: string;
   folder: string;
+  revalidateAfterMove?: boolean;
 }): Promise<{ moved: number }> {
   const userId = await requireUserId();
   const data = bulkMoveSchema.parse(input);
@@ -208,16 +210,20 @@ export async function bulkMoveNotes(input: {
     await cleanupIfEmpty(oldFolderId);
   }
 
-  revalidatePath("/");
+  if (data.revalidateAfterMove ?? true) {
+    revalidatePath("/");
+  }
   await notifyGroups(affectedGroupIds);
   return { moved: owned.length };
 }
 
 export async function bulkDeleteNotes(
   noteIds: string[],
+  revalidateAfterDelete = true,
 ): Promise<{ deleted: number }> {
   const userId = await requireUserId();
   const validIds = z.array(z.string()).min(1).max(200).parse(noteIds);
+  const shouldRevalidate = z.boolean().parse(revalidateAfterDelete);
 
   const owned = await prisma.note.findMany({
     where: { id: { in: validIds }, ownerId: userId },
@@ -235,9 +241,16 @@ export async function bulkDeleteNotes(
     await cleanupIfEmpty(folderId);
   }
 
-  revalidatePath("/");
+  if (shouldRevalidate) {
+    revalidatePath("/");
+  }
   await notifyGroups(affectedGroupIds);
   return { deleted: owned.length };
+}
+
+export async function finalizeBulkNoteChanges(): Promise<void> {
+  await requireUserId();
+  revalidatePath("/");
 }
 
 export async function renameSubject(
