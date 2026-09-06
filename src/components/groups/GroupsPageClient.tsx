@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { GroupsSidebar } from "@/components/groups/GroupsSidebar";
 import { CreateGroupModal } from "@/components/groups/CreateGroupModal";
+import { IdleLogout } from "@/components/IdleLogout";
 import { signOutAction } from "@/lib/actions/auth";
 import { createGroup } from "@/lib/actions/groups";
 import type { GroupSummaryDTO } from "@/lib/types";
@@ -46,6 +47,7 @@ export function GroupsPageClient({
 
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
+      <IdleLogout />
       <GroupsSidebar
         groups={groups}
         activeGroupId={null}

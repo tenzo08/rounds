@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ModalShell } from "@/components/binder/ModalShell";
 import { SubjectTopicFolderFields } from "@/components/binder/SubjectTopicFolderFields";
 import {
@@ -11,6 +11,10 @@ import {
 } from "@/lib/mdFlashcards";
 import { importFlashcards } from "@/lib/actions/mdImport";
 import { checkDuplicateFocuses } from "@/lib/actions/duplicates";
+import {
+  getSelectionSummary,
+  setAllIncluded,
+} from "@/lib/reviewSelection";
 import type { SubjectSummaryDTO } from "@/lib/types";
 
 interface MdImportModalProps {
@@ -50,6 +54,17 @@ export function MdImportModal({
   const [isChecking, setIsChecking] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const selectAllRef = useRef<HTMLInputElement>(null);
+  const selectionSummary = reviewCards
+    ? getSelectionSummary(reviewCards)
+    : null;
+
+  useEffect(() => {
+    if (selectAllRef.current) {
+      selectAllRef.current.indeterminate =
+        selectionSummary?.partiallySelected ?? false;
+    }
+  }, [selectionSummary?.partiallySelected]);
 
   async function handleCopyPrompt() {
     try {
@@ -203,6 +218,28 @@ export function MdImportModal({
 
       {reviewCards && (
         <div className="mt-3.5 max-h-[38vh] overflow-y-auto rounded border border-line">
+          <div className="sticky top-0 z-10 flex items-center justify-between border-b border-line bg-paper px-3 py-2.5">
+            <label className="flex cursor-pointer items-center gap-2.5 text-[12.5px] font-semibold text-ink">
+              <input
+                ref={selectAllRef}
+                type="checkbox"
+                checked={selectionSummary?.allSelected ?? false}
+                onChange={(event) =>
+                  setReviewCards((cards) =>
+                    cards
+                      ? setAllIncluded(cards, event.target.checked)
+                      : cards,
+                  )
+                }
+                className="h-3.5 w-3.5 shrink-0"
+              />
+              Select all
+            </label>
+            <span className="font-mono text-[10.5px] text-ink-soft">
+              {selectionSummary?.selectedCount ?? 0} of {reviewCards.length}{" "}
+              selected
+            </span>
+          </div>
           {reviewCards.map((card, idx) => (
             <label
               key={idx}

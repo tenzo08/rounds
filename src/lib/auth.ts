@@ -2,15 +2,19 @@ import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import { prisma } from "@/lib/prisma";
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+export const {
+  handlers,
+  auth,
+  signIn,
+  signOut,
+  unstable_update: updateSession,
+} = NextAuth({
   providers: [Google],
   session: {
     strategy: "jwt",
-    // A student is signed out after 10 minutes of no activity — every page
-    // load within that window pushes the expiry back out (updateAge), so
-    // active use never gets interrupted, but a genuinely idle tab expires.
+    // Active clients renew this token at most once a minute. The matching
+    // browser idle timer signs out after ten minutes without interaction.
     maxAge: 10 * 60,
-    updateAge: 60,
   },
   callbacks: {
     async signIn({ profile }) {
